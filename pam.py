@@ -20,7 +20,7 @@ a user against the Pluggable Authentication Modules (PAM) on the system.
 Implemented using ctypes, so no compilation is necessary.
 """
 __all__     = ['pam']
-__version__ = '1.8'
+__version__ = '1.8.1'
 __author__  = 'David Ford <dford@verio.net>'
 __updated__ = '2014-8-3'
 
