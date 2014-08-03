@@ -20,9 +20,9 @@ a user against the Pluggable Authentication Modules (PAM) on the system.
 Implemented using ctypes, so no compilation is necessary.
 """
 __all__     = ['pam']
-__version__ = '1.7'
+__version__ = '1.8'
 __author__  = 'David Ford <dford@verio.net>'
-__updated__ = '2014-8-2'
+__updated__ = '2014-8-3'
 
 import sys
 
@@ -107,7 +107,7 @@ class pam():
            
            self.code (integer) and self.reason (string) are always stored and may
            be referenced for the reason why authentication failed. 0/'Success' will
-           be stored for success. Python2 users will get u'Success'
+           be stored for success.
     
            Python3 expects bytes() for ctypes inputs.  This function will make
            necessary conversions using the supplied encoding.
@@ -151,7 +151,9 @@ class pam():
         if retval != 0:
             # This is not an authentication error, something has gone wrong starting up PAM
             self.code   = retval
-            self.reason = pam_strerror(byref(handle), retval).decode(encoding)
+            self.reason = pam_strerror(byref(handle), retval)
+            if sys.version_info >= (3,):
+                self.reason = self.reason.decode(encoding)
             pam_end(handle, retval)
             return False
     
@@ -165,7 +167,9 @@ class pam():
         
         # store information to inform the caller why we failed
         self.code   = retval
-        self.reason = pam_strerror(byref(handle), retval).decode(encoding)
+        self.reason = pam_strerror(byref(handle), retval)
+        if sys.version_info >= (3,):
+            self.reason = self.reason.decode(encoding)
         
         return auth_success
     
@@ -193,4 +197,4 @@ if __name__ == "__main__":
     
     # enter a valid username and an invalid/valid password, to verify both failure and success
     pam.authenticate(username, getpass.getpass())
-    print(pam.code, pam.reason)
+    print('{} {}'.format(pam.code, pam.reason))
