@@ -7,15 +7,9 @@ authenticate function given a username, password, and other optional keywords."
 arch=('any')
 url="https://github.com/FirefighterBlu3/python-pam"
 license=('MIT')
-groups=()
 depends=('python','pam')
-makedepends=()
-provides=()
-conflicts=()
-replaces=()
-backup=()
 options=(!emptydirs)
-install=
+changelog=('ChangeLog')
 source=(https://pypi.python.org/packages/source/p/${pkgname}/${pkgname}-${pkgver}.tar.gz
         https://pypi.python.org/packages/source/p/${pkgname}/${pkgname}-${pkgver}.tar.gz.asc)
 md5sums=(9a07139fea29e8dae66f5bc37d830a74

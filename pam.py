@@ -11,18 +11,19 @@
 # added byref as well
 # use readline to prestuff the getuser input
 
-"""
+'''
 PAM module for python
 
 Provides an authenticate function that will allow the caller to authenticate
 a user against the Pluggable Authentication Modules (PAM) on the system.
 
 Implemented using ctypes, so no compilation is necessary.
-"""
-__all__     = ['pam']
-__version__ = '1.8.1'
-__author__  = 'David Ford <dford@verio.net>'
-__updated__ = '2014-8-3'
+'''
+
+__all__      = ['pam']
+__version__  = '1.8.1'
+__author__   = 'David Ford <david@blue-labs.org>'
+__released__ = '2014 August 3'
 
 import sys
 
@@ -102,26 +103,26 @@ class pam():
 
     def authenticate(self, username, password, service='login', encoding='utf-8', resetcreds=True):
         """username and password authentication for the given service.
-        
+
            Returns True for success, or False for failure.
-           
+
            self.code (integer) and self.reason (string) are always stored and may
            be referenced for the reason why authentication failed. 0/'Success' will
            be stored for success.
-    
+
            Python3 expects bytes() for ctypes inputs.  This function will make
            necessary conversions using the supplied encoding.
-        
+
         Inputs:
           username: username to authenticate
           password: password in plain text
           service:  PAM service to authenticate against, defaults to 'login'
-        
+
         Returns:
           success:  True
           failure:  False
         """
-    
+
         @conv_func
         def my_conv(n_messages, messages, p_response, app_data):
             """Simple conversation function that responds to any
@@ -137,17 +138,17 @@ class pam():
                     p_response.contents[i].resp = dst
                     p_response.contents[i].resp_retcode = 0
             return 0
-    
+
         # python3 ctypes prefers bytes
         if sys.version_info >= (3,):
             if isinstance(username, str): username = username.encode(encoding)
             if isinstance(password, str): password = password.encode(encoding)
             if isinstance(service, str):  service  = service.encode(encoding)
-    
+
         handle = PamHandle()
         conv   = PamConv(my_conv, 0)
         retval = pam_start(service, username, byref(conv), byref(handle))
-    
+
         if retval != 0:
             # This is not an authentication error, something has gone wrong starting up PAM
             self.code   = retval
@@ -156,23 +157,23 @@ class pam():
                 self.reason = self.reason.decode(encoding)
             pam_end(handle, retval)
             return False
-    
+
         retval = pam_authenticate(handle, 0)
         auth_success = retval == 0
-        
+
         if auth_success and resetcreds:
             retval = pam_setcred(handle, PAM_REINITIALIZE_CRED);
-        
+
         pam_end(handle, retval)
-        
+
         # store information to inform the caller why we failed
         self.code   = retval
         self.reason = pam_strerror(byref(handle), retval)
         if sys.version_info >= (3,):
             self.reason = self.reason.decode(encoding)
-        
+
         return auth_success
-    
+
 
 if __name__ == "__main__":
     import readline, getpass
@@ -192,9 +193,9 @@ if __name__ == "__main__":
         return result
 
     pam = pam()
-    
+
     username = input_with_prefill('Username: ', getpass.getuser())
-    
+
     # enter a valid username and an invalid/valid password, to verify both failure and success
     pam.authenticate(username, getpass.getpass())
     print('{} {}'.format(pam.code, pam.reason))
