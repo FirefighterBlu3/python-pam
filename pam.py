@@ -21,9 +21,9 @@ Implemented using ctypes, so no compilation is necessary.
 '''
 
 __all__      = ['pam']
-__version__  = '1.8.1'
+__version__  = '1.8.2'
 __author__   = 'David Ford <david@blue-labs.org>'
-__released__ = '2014 August 3'
+__released__ = '2014 November 17'
 
 import sys
 
