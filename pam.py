@@ -175,6 +175,13 @@ class pam():
         return auth_success
 
 
+def authenticate(*vargs, **dargs):
+    """
+    Compatibility function for older versions of python-pam.
+    """
+    return pam().authenticate(*vargs, **dargs)
+
+
 if __name__ == "__main__":
     import readline, getpass
 
