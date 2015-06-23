@@ -10,7 +10,7 @@ license=('MIT')
 depends=('python' 'pam')
 makedepends=('python-setuptools')
 options=(!emptydirs)
-changelog=($srcdir/ChangeLog)
+changelog=(ChangeLog)
 source=(https://pypi.python.org/packages/source/p/${pkgname}/${pkgname}-${pkgver}.tar.gz)
 md5sums=(db71b6b999246fb05d78ecfbe166629d)
 
