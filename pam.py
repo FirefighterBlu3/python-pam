@@ -164,13 +164,13 @@ class pam():
         if auth_success and resetcreds:
             retval = pam_setcred(handle, PAM_REINITIALIZE_CRED);
 
-        pam_end(handle, retval)
-
         # store information to inform the caller why we failed
         self.code   = retval
         self.reason = pam_strerror(handle, retval)
         if sys.version_info >= (3,):
             self.reason = self.reason.decode(encoding)
+
+        pam_end(handle, retval)
 
         return auth_success
 
