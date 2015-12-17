@@ -152,10 +152,7 @@ class pam():
         if retval != 0:
             # This is not an authentication error, something has gone wrong starting up PAM
             self.code   = retval
-            self.reason = pam_strerror(handle, retval)
-            if sys.version_info >= (3,):
-                self.reason = self.reason.decode(encoding)
-            pam_end(handle, retval)
+            self.reason = "pam_start() failed"
             return False
 
         retval = pam_authenticate(handle, 0)
