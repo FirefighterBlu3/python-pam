@@ -135,7 +135,7 @@ class pam():
                 if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
                     cs  = c_char_p(password)
                     dst = calloc(sizeof(c_char_p), len(password)+1)
-                    memmove(dst , cs, len(password))
+                    memmove(dst, cs, len(password))
                     response[i].resp = dst
                     response[i].resp_retcode = 0
             return 0
