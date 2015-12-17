@@ -33,7 +33,7 @@ from ctypes import memmove
 from ctypes.util import find_library
 
 class PamHandle(Structure):
-    """wrapper class for pam_handle_t"""
+    """wrapper class for pam_handle_t pointer"""
     _fields_ = [ ("handle", c_void_p) ]
 
     def __init__(self):
