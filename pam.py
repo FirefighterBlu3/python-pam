@@ -153,6 +153,11 @@ class pam():
             if isinstance(service, unicode):
                 service  = service.encode(encoding)
 
+        if b'\x00' in username or b'\x00' in password or b'\x00' in service:
+            self.code = 4  # PAM_SYSTEM_ERR in Linux-PAM
+            self.reason = 'strings may not contain NUL'
+            return False
+
         handle = PamHandle()
         conv   = PamConv(my_conv, 0)
         retval = pam_start(service, username, byref(conv), byref(handle))
