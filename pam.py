@@ -28,7 +28,7 @@ __released__ = '2014 November 17'
 import sys
 
 from ctypes import CDLL, POINTER, Structure, CFUNCTYPE, cast, byref, sizeof
-from ctypes import c_void_p, c_uint, c_char_p, c_char, c_int
+from ctypes import c_void_p, c_size_t, c_char_p, c_char, c_int
 from ctypes import memmove
 from ctypes.util import find_library
 
@@ -72,7 +72,7 @@ libpam                    = CDLL(find_library("pam"))
 
 calloc                    = libc.calloc
 calloc.restype            = c_void_p
-calloc.argtypes           = [c_uint, c_uint]
+calloc.argtypes           = [c_size_t, c_size_t]
 
 pam_end                   = libpam.pam_end
 pam_end.restype           = c_int
@@ -134,7 +134,7 @@ class pam():
             for i in range(n_messages):
                 if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
                     cs  = c_char_p(password)
-                    dst = calloc(sizeof(c_char), len(password)+1)
+                    dst = calloc(len(password)+1, sizeof(c_char))
                     memmove(dst, cs, len(password))
                     response[i].resp = dst
                     response[i].resp_retcode = 0
