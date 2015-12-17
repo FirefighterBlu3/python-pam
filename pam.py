@@ -129,14 +129,15 @@ class pam():
                prompt where the echo is off with the supplied password"""
             # Create an array of n_messages response objects
             addr = calloc(n_messages, sizeof(PamResponse))
-            p_response[0] = cast(addr, POINTER(PamResponse))
+            response = cast(addr, POINTER(PamResponse))
+            p_response[0] = response
             for i in range(n_messages):
                 if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
                     cs  = c_char_p(password)
                     dst = calloc(sizeof(c_char_p), len(password)+1)
                     memmove(dst , cs, len(password))
-                    p_response.contents[i].resp = dst
-                    p_response.contents[i].resp_retcode = 0
+                    response[i].resp = dst
+                    response[i].resp_retcode = 0
             return 0
 
         # python3 ctypes prefers bytes
