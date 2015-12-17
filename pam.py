@@ -145,6 +145,13 @@ class pam():
             if isinstance(username, str): username = username.encode(encoding)
             if isinstance(password, str): password = password.encode(encoding)
             if isinstance(service, str):  service  = service.encode(encoding)
+        else:
+            if isinstance(username, unicode):
+                username = username.encode(encoding)
+            if isinstance(password, unicode):
+                password = password.encode(encoding)
+            if isinstance(service, unicode):
+                service  = service.encode(encoding)
 
         handle = PamHandle()
         conv   = PamConv(my_conv, 0)
