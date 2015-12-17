@@ -88,7 +88,7 @@ pam_setcred.argtypes      = [PamHandle, c_int]
 
 pam_strerror              = libpam.pam_strerror
 pam_strerror.restype      = c_char_p
-pam_strerror.argtypes     = [POINTER(PamHandle), c_int]
+pam_strerror.argtypes     = [PamHandle, c_int]
 
 pam_authenticate          = libpam.pam_authenticate
 pam_authenticate.restype  = c_int
@@ -152,7 +152,7 @@ class pam():
         if retval != 0:
             # This is not an authentication error, something has gone wrong starting up PAM
             self.code   = retval
-            self.reason = pam_strerror(byref(handle), retval)
+            self.reason = pam_strerror(handle, retval)
             if sys.version_info >= (3,):
                 self.reason = self.reason.decode(encoding)
             pam_end(handle, retval)
@@ -168,7 +168,7 @@ class pam():
 
         # store information to inform the caller why we failed
         self.code   = retval
-        self.reason = pam_strerror(byref(handle), retval)
+        self.reason = pam_strerror(handle, retval)
         if sys.version_info >= (3,):
             self.reason = self.reason.decode(encoding)
 
