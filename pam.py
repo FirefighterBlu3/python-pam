@@ -133,9 +133,8 @@ class pam():
             p_response[0] = response
             for i in range(n_messages):
                 if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
-                    cs  = c_char_p(password)
                     dst = calloc(len(password)+1, sizeof(c_char))
-                    memmove(dst, cs, len(password))
+                    memmove(dst, cpassword, len(password))
                     response[i].resp = dst
                     response[i].resp_retcode = 0
             return 0
@@ -157,6 +156,10 @@ class pam():
             self.code = 4  # PAM_SYSTEM_ERR in Linux-PAM
             self.reason = 'strings may not contain NUL'
             return False
+
+        # do this up front so we can safely throw an exception if there's
+        # anything wrong with it
+        cpassword = c_char_p(password)
 
         handle = PamHandle()
         conv   = PamConv(my_conv, 0)
