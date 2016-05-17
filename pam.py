@@ -28,12 +28,12 @@ __released__ = '2014 November 17'
 import sys
 
 from ctypes import CDLL, POINTER, Structure, CFUNCTYPE, cast, byref, sizeof
-from ctypes import c_void_p, c_uint, c_char_p, c_char, c_int
+from ctypes import c_void_p, c_size_t, c_char_p, c_char, c_int
 from ctypes import memmove
 from ctypes.util import find_library
 
 class PamHandle(Structure):
-    """wrapper class for pam_handle_t"""
+    """wrapper class for pam_handle_t pointer"""
     _fields_ = [ ("handle", c_void_p) ]
 
     def __init__(self):
@@ -72,7 +72,7 @@ libpam                    = CDLL(find_library("pam"))
 
 calloc                    = libc.calloc
 calloc.restype            = c_void_p
-calloc.argtypes           = [c_uint, c_uint]
+calloc.argtypes           = [c_size_t, c_size_t]
 
 pam_end                   = libpam.pam_end
 pam_end.restype           = c_int
@@ -88,7 +88,7 @@ pam_setcred.argtypes      = [PamHandle, c_int]
 
 pam_strerror              = libpam.pam_strerror
 pam_strerror.restype      = c_char_p
-pam_strerror.argtypes     = [POINTER(PamHandle), c_int]
+pam_strerror.argtypes     = [PamHandle, c_int]
 
 pam_authenticate          = libpam.pam_authenticate
 pam_authenticate.restype  = c_int
@@ -129,14 +129,14 @@ class pam():
                prompt where the echo is off with the supplied password"""
             # Create an array of n_messages response objects
             addr = calloc(n_messages, sizeof(PamResponse))
-            p_response[0] = cast(addr, POINTER(PamResponse))
+            response = cast(addr, POINTER(PamResponse))
+            p_response[0] = response
             for i in range(n_messages):
                 if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
-                    cs  = c_char_p(password)
-                    dst = calloc(sizeof(c_char_p), len(password)+1)
-                    memmove(dst , cs, len(password))
-                    p_response.contents[i].resp = dst
-                    p_response.contents[i].resp_retcode = 0
+                    dst = calloc(len(password)+1, sizeof(c_char))
+                    memmove(dst, cpassword, len(password))
+                    response[i].resp = dst
+                    response[i].resp_retcode = 0
             return 0
 
         # python3 ctypes prefers bytes
@@ -144,6 +144,22 @@ class pam():
             if isinstance(username, str): username = username.encode(encoding)
             if isinstance(password, str): password = password.encode(encoding)
             if isinstance(service, str):  service  = service.encode(encoding)
+        else:
+            if isinstance(username, unicode):
+                username = username.encode(encoding)
+            if isinstance(password, unicode):
+                password = password.encode(encoding)
+            if isinstance(service, unicode):
+                service  = service.encode(encoding)
+
+        if b'\x00' in username or b'\x00' in password or b'\x00' in service:
+            self.code = 4  # PAM_SYSTEM_ERR in Linux-PAM
+            self.reason = 'strings may not contain NUL'
+            return False
+
+        # do this up front so we can safely throw an exception if there's
+        # anything wrong with it
+        cpassword = c_char_p(password)
 
         handle = PamHandle()
         conv   = PamConv(my_conv, 0)
@@ -152,10 +168,7 @@ class pam():
         if retval != 0:
             # This is not an authentication error, something has gone wrong starting up PAM
             self.code   = retval
-            self.reason = pam_strerror(byref(handle), retval)
-            if sys.version_info >= (3,):
-                self.reason = self.reason.decode(encoding)
-            pam_end(handle, retval)
+            self.reason = "pam_start() failed"
             return False
 
         retval = pam_authenticate(handle, 0)
@@ -164,13 +177,13 @@ class pam():
         if auth_success and resetcreds:
             retval = pam_setcred(handle, PAM_REINITIALIZE_CRED);
 
-        pam_end(handle, retval)
-
         # store information to inform the caller why we failed
         self.code   = retval
-        self.reason = pam_strerror(byref(handle), retval)
+        self.reason = pam_strerror(handle, retval)
         if sys.version_info >= (3,):
             self.reason = self.reason.decode(encoding)
+
+        pam_end(handle, retval)
 
         return auth_success
 
