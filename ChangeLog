@@ -1,5 +1,8 @@
 Start of ChangeLog
 
+2018-3-22 v1.8.3
+  add a test for the existence libpam.pam_end function
+
 2014-11-17 v1.8.2
   add MANIFEST.in so README.md gets included for pypi (pip installs)
 
