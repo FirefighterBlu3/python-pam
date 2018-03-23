@@ -21,9 +21,9 @@ Implemented using ctypes, so no compilation is necessary.
 '''
 
 __all__      = ['pam']
-__version__  = '1.8.2'
+__version__  = '1.8.3'
 __author__   = 'David Ford <david@blue-labs.org>'
-__released__ = '2014 November 17'
+__released__ = '2018 March 23'
 
 import sys
 
@@ -74,9 +74,11 @@ calloc                    = libc.calloc
 calloc.restype            = c_void_p
 calloc.argtypes           = [c_size_t, c_size_t]
 
-pam_end                   = libpam.pam_end
-pam_end.restype           = c_int
-pam_end.argtypes          = [PamHandle, c_int]
+# bug #6 (@NIPE-SYSTEMS), some libpam versions don't include this function
+if hasattr(libpam, 'pam_end'):
+    pam_end                   = libpam.pam_end
+    pam_end.restype           = c_int
+    pam_end.argtypes          = [PamHandle, c_int]
 
 pam_start                 = libpam.pam_start
 pam_start.restype         = c_int
@@ -183,7 +185,8 @@ class pam():
         if sys.version_info >= (3,):
             self.reason = self.reason.decode(encoding)
 
-        pam_end(handle, retval)
+        if hasattr(libpam, 'pam_end'):
+            pam_end(handle, retval)
 
         return auth_success
 
