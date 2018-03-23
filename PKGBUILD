@@ -7,16 +7,15 @@ authenticate function given a username, password, and other optional keywords."
 arch=('any')
 url="https://github.com/FirefighterBlu3/python-pam"
 license=('MIT')
-depends=('python','pam')
+depends=('python' 'pam')
+makedepends=('python-setuptools')
 options=(!emptydirs)
-changelog=('ChangeLog')
-source=(https://pypi.python.org/packages/source/p/${pkgname}/${pkgname}-${pkgver}.tar.gz
-        https://pypi.python.org/packages/source/p/${pkgname}/${pkgname}-${pkgver}.tar.gz.asc)
-md5sums=(9a07139fea29e8dae66f5bc37d830a74
-         ee1be19c5a69cb37629bded9a5816335)
+changelog=(ChangeLog)
+source=(https://pypi.python.org/packages/source/p/${pkgname}/${pkgname}-${pkgver}.tar.gz)
+md5sums=(db71b6b999246fb05d78ecfbe166629d)
 
 package() {
-  cd "$srcdir/$pkgname-$pkgver"
+  cd "$pkgname-$pkgver"
   python setup.py install --root="$pkgdir/" --optimize=1
 }
 
