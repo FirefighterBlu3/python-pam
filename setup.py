@@ -17,7 +17,6 @@ setup(name             = 'python-pam',
       maintainer_email = 'david@blue-labs.org',
       url              = 'https://github.com/FirefighterBlu3/python-pam',
       download_url     = 'https://github.com/FirefighterBlu3/python-pam',
-      bugtrack_url     = 'https://github.com/FirefighterBlu3/python-pam/issues',
       license          = 'License :: OSI Approved :: MIT License',
       platforms        = ['i686','x86_64'],
       classifiers      = [
