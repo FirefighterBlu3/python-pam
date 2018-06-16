@@ -1,5 +1,8 @@
 Start of ChangeLog
 
+2018-6-15 v1.8.4
+  include LICENSE file as some distributions rely on the presence of it rather than extracting from setup.py
+
 2018-3-22 v1.8.3
   add a test for the existence libpam.pam_end function
 

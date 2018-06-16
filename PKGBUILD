@@ -1,6 +1,6 @@
 # Maintainer: David Ford <david@blue-labs.org>
 pkgname=python-pam
-pkgver=1.8.2
+pkgver=1.8.4
 pkgrel=1
 pkgdesc="Linux, FreeBSD, etc (any system that uses PAM) PAM module that provides an
 authenticate function given a username, password, and other optional keywords."
