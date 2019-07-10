@@ -84,6 +84,10 @@ pam_start                 = libpam.pam_start
 pam_start.restype         = c_int
 pam_start.argtypes        = [c_char_p, c_char_p, POINTER(PamConv), POINTER(PamHandle)]
 
+pam_acct_mgmt             = libpam.pam_acct_mgmt
+pam_acct_mgmt.restype     = c_int
+pam_acct_mgmt.argtypes    = [PamHandle, c_int]
+
 pam_setcred               = libpam.pam_setcred
 pam_setcred.restype       = c_int
 pam_setcred.argtypes      = [PamHandle, c_int]
@@ -175,6 +179,10 @@ class pam():
 
         retval = pam_authenticate(handle, 0)
         auth_success = retval == 0
+
+        if auth_success:
+            retval = pam_acct_mgmt(handle, 0)
+            auth_success = retval == 0
 
         if auth_success and resetcreds:
             retval = pam_setcred(handle, PAM_REINITIALIZE_CRED)
