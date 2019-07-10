@@ -177,7 +177,7 @@ class pam():
         auth_success = retval == 0
 
         if auth_success and resetcreds:
-            retval = pam_setcred(handle, PAM_REINITIALIZE_CRED);
+            retval = pam_setcred(handle, PAM_REINITIALIZE_CRED)
 
         # store information to inform the caller why we failed
         self.code   = retval
