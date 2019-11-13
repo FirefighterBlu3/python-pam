@@ -21,10 +21,11 @@ Implemented using ctypes, so no compilation is necessary.
 '''
 
 __all__      = ['pam']
-__version__  = '1.8.4'
+__version__  = '1.8.5rc1'
 __author__   = 'David Ford <david@blue-labs.org>'
-__released__ = '2018 June 15'
+__released__ = '2019 November 12'
 
+import os
 import sys
 
 from ctypes import CDLL, POINTER, Structure, CFUNCTYPE, cast, byref, sizeof
@@ -67,6 +68,8 @@ PAM_ERROR_MSG             = 3
 PAM_TEXT_INFO             = 4
 PAM_REINITIALIZE_CRED     = 8
 
+PAM_TTY                   = 3
+
 libc                      = CDLL(find_library("c"))
 libpam                    = CDLL(find_library("pam"))
 
@@ -87,6 +90,10 @@ pam_start.argtypes        = [c_char_p, c_char_p, POINTER(PamConv), POINTER(PamHa
 pam_acct_mgmt             = libpam.pam_acct_mgmt
 pam_acct_mgmt.restype     = c_int
 pam_acct_mgmt.argtypes    = [PamHandle, c_int]
+
+pam_set_item               = libpam.pam_set_item
+pam_set_item.restype       = c_int
+pam_set_item.argtypes      = [PamHandle, c_int, c_void_p]
 
 pam_setcred               = libpam.pam_setcred
 pam_setcred.restype       = c_int
@@ -167,6 +174,10 @@ class pam():
         # anything wrong with it
         cpassword = c_char_p(password)
 
+        # if X DISPLAY is set, use it, otherwise get the STDIN tty
+        ctty = os.environ.get('DISPLAY', os.ttyname(0)).encode(encoding)
+        ctty = c_char_p(ctty)
+
         handle = PamHandle()
         conv   = PamConv(my_conv, 0)
         retval = pam_start(service, username, byref(conv), byref(handle))
@@ -176,6 +187,9 @@ class pam():
             self.code   = retval
             self.reason = "pam_start() failed"
             return False
+
+        # set the TTY, needed when pam_securetty is used and the username root is used
+        pam_set_item(handle, PAM_TTY, ctty)
 
         retval = pam_authenticate(handle, 0)
         auth_success = retval == 0
