@@ -9,6 +9,7 @@ __sdesc = 'Python PAM module using ctypes, py3/py2'
 setup(name             = 'python-pam',
       description      =  __sdesc,
       long_description = read('README.md'),
+      long_description_content_type='text/markdown',
       py_modules       = ['pam'],
       version          = '1.8.4',
       author           = 'David Ford',

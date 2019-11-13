@@ -1,24 +1,24 @@
-python-pam
-==========
+# python-pam
 
 Python pam module supporting py3 (and py2)
 
 Commandline example:
 
-```
+```bash
 [david@Scott python-pam]$ python pam.py
 Username: david
-Password: 
+Password:
 0 Success
 
 [david@Scott python-pam]$ python2 pam.py
 Username: david
-Password: 
+Password:
 0 Success
 ```
 
 Inline examples:
-```
+
+```python
 [david@Scott python-pam]$ python
 Python 3.4.1 (default, May 19 2014, 17:23:49)
 [GCC 4.9.0 20140507 (prerelease)] on linux
