@@ -20,6 +20,7 @@ setup(name             = 'python-pam',
       download_url     = 'https://github.com/FirefighterBlu3/python-pam',
       license          = 'License :: OSI Approved :: MIT License',
       platforms        = ['i686','x86_64'],
+      long_description_content_type='text/markdown',
       classifiers      = [
           'Development Status :: 6 - Mature',
           'Environment :: Plugins',
