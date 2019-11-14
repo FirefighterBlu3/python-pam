@@ -130,11 +130,17 @@ class pam:
 
     def authenticate(
                 self,
-                username: str,
-                password: str,
-                service: str = 'login',
-                encoding: str = 'utf-8',
-                resetcreds: bool = True) -> bool:
+                username,
+                password,
+                service='login',
+                encoding='utf-8',
+                resetcreds=True):
+        authenticate.__annotations = {'username': str,
+                                      'password': str,
+                                      'service': str,
+                                      'encoding': str,
+                                      'resetcreds': bool,
+                                      'return': bool}
         """username and password authentication for the given service.
 
         Returns True for success, or False for failure.
@@ -273,10 +279,8 @@ if __name__ == "__main__":
 
         if sys.version_info >= (3,):
             result = input(prompt)
-            # ignore, lint things
-            raw_input = input
         else:
-            result = raw_input(prompt)
+            result = raw_input(prompt)  # noqa:F821
 
         readline.set_pre_input_hook()
 
