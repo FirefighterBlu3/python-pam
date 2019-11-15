@@ -40,13 +40,26 @@ if sys.version_info < (3, ):
           'correctness')
 
 
+# Various constants
+PAM_PROMPT_ECHO_OFF = 1
+PAM_PROMPT_ECHO_ON = 2
+PAM_ERROR_MSG = 3
+PAM_TEXT_INFO = 4
+PAM_REINITIALIZE_CRED = 8
+
+PAM_TTY = 3
+
+
 class PamHandle(Structure):
     """wrapper class for pam_handle_t pointer"""
     _fields_ = [("handle", c_void_p)]
 
     def __init__(self):
-        Structure.__init__(self)
+        super().__init__()
         self.handle = 0
+
+    def __repr__(self):
+        return f"<PamHandle {self.handle}>"
 
 
 class PamMessage(Structure):
@@ -74,59 +87,46 @@ class PamConv(Structure):
     _fields_ = [("conv", conv_func), ("appdata_ptr", c_void_p)]
 
 
-# Various constants
-PAM_PROMPT_ECHO_OFF = 1
-PAM_PROMPT_ECHO_ON = 2
-PAM_ERROR_MSG = 3
-PAM_TEXT_INFO = 4
-PAM_REINITIALIZE_CRED = 8
-
-PAM_TTY = 3
-
-libc = CDLL(find_library("c"))
-libpam = CDLL(find_library("pam"))
-
-calloc = libc.calloc
-calloc.restype = c_void_p
-calloc.argtypes = [c_size_t, c_size_t]
-
-# bug #6 (@NIPE-SYSTEMS), some libpam versions don't include this function
-if hasattr(libpam, 'pam_end'):
-    pam_end = libpam.pam_end
-    pam_end.restype = c_int
-    pam_end.argtypes = [PamHandle, c_int]
-
-pam_start = libpam.pam_start
-pam_start.restype = c_int
-pam_start.argtypes = [c_char_p, c_char_p, POINTER(PamConv), POINTER(PamHandle)]
-
-pam_acct_mgmt = libpam.pam_acct_mgmt
-pam_acct_mgmt.restype = c_int
-pam_acct_mgmt.argtypes = [PamHandle, c_int]
-
-pam_set_item = libpam.pam_set_item
-pam_set_item.restype = c_int
-pam_set_item.argtypes = [PamHandle, c_int, c_void_p]
-
-pam_setcred = libpam.pam_setcred
-pam_setcred.restype = c_int
-pam_setcred.argtypes = [PamHandle, c_int]
-
-pam_strerror = libpam.pam_strerror
-pam_strerror.restype = c_char_p
-pam_strerror.argtypes = [PamHandle, c_int]
-
-pam_authenticate = libpam.pam_authenticate
-pam_authenticate.restype = c_int
-pam_authenticate.argtypes = [PamHandle, c_int]
-
-
-class pam:
+class PamAuthenticator:
     code = 0
     reason = None
 
     def __init__(self):
-        pass
+        libc = CDLL(find_library("c"))
+        libpam = CDLL(find_library("pam"))
+
+        self.calloc = libc.calloc
+        self.calloc.restype = c_void_p
+        self.calloc.argtypes = [c_size_t, c_size_t]
+
+        # bug #6 (@NIPE-SYSTEMS), some libpam versions don't include this
+        # function
+        if hasattr(libpam, 'pam_end'):
+            self.pam_end = libpam.pam_end
+            self.pam_end.restype = c_int
+            self.pam_end.argtypes = [PamHandle, c_int]
+
+        self.pam_start = libpam.pam_start
+        self.pam_start.restype = c_int
+        self.pam_start.argtypes = [c_char_p, c_char_p, POINTER(PamConv),
+                                   POINTER(PamHandle)]
+
+        self.pam_acct_mgmt = libpam.pam_acct_mgmt
+        self.pam_acct_mgmt.restype = c_int
+        self.pam_acct_mgmt.argtypes = [PamHandle, c_int]
+
+        self.pam_set_item = libpam.pam_set_item
+        self.pam_set_item.restype = c_int
+        self.pam_set_item.argtypes = [PamHandle, c_int, c_void_p]
+
+        self.pam_setcred = libpam.pam_setcred
+        self.pam_strerror = libpam.pam_strerror
+        self.pam_strerror.restype = c_char_p
+        self.pam_strerror.argtypes = [PamHandle, c_int]
+
+        self.pam_authenticate = libpam.pam_authenticate
+        self.pam_authenticate.restype = c_int
+        self.pam_authenticate.argtypes = [PamHandle, c_int]
 
     def authenticate(
                 self,
@@ -167,12 +167,12 @@ class pam:
             """Simple conversation function that responds to any
                prompt where the echo is off with the supplied password"""
             # Create an array of n_messages response objects
-            addr = calloc(n_messages, sizeof(PamResponse))
+            addr = self.calloc(n_messages, sizeof(PamResponse))
             response = cast(addr, POINTER(PamResponse))
             p_response[0] = response
             for i in range(n_messages):
                 if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
-                    dst = calloc(len(password)+1, sizeof(c_char))
+                    dst = self.calloc(len(password)+1, sizeof(c_char))
                     memmove(dst, cpassword, len(password))
                     response[i].resp = dst
                     response[i].resp_retcode = 0
@@ -206,7 +206,7 @@ class pam:
 
         handle = PamHandle()
         conv = PamConv(my_conv, 0)
-        retval = pam_start(service, username, byref(conv), byref(handle))
+        retval = self.pam_start(service, username, byref(conv), byref(handle))
 
         if retval != 0:
             # This is not an authentication error, something has gone wrong
@@ -235,35 +235,39 @@ class pam:
         if ctty:
             ctty = c_char_p(ctty.encode(encoding))
 
-            pam_set_item(handle, PAM_TTY, ctty)
+            self.pam_set_item(handle, PAM_TTY, ctty)
 
-        retval = pam_authenticate(handle, 0)
+        retval = self.pam_authenticate(handle, 0)
         auth_success = retval == 0
 
         if auth_success:
-            retval = pam_acct_mgmt(handle, 0)
+            retval = self.pam_acct_mgmt(handle, 0)
             auth_success = retval == 0
 
         if auth_success and resetcreds:
-            retval = pam_setcred(handle, PAM_REINITIALIZE_CRED)
+            retval = self.pam_setcred(handle, PAM_REINITIALIZE_CRED)
 
         # store information to inform the caller why we failed
         self.code = retval
-        self.reason = pam_strerror(handle, retval)
+        self.reason = self.pam_strerror(handle, retval)
         if sys.version_info >= (3,):
             self.reason = self.reason.decode(encoding)
 
-        if hasattr(libpam, 'pam_end'):
-            pam_end(handle, retval)
+        if hasattr(self.libpam, 'pam_end'):
+            self.pam_end(handle, retval)
 
         return auth_success
+
+
+# legacy due to bad naming conventions
+pam = PamAuthenticator
 
 
 def authenticate(*vargs, **dargs):
     """
     Compatibility function for older versions of python-pam.
     """
-    return pam().authenticate(*vargs, **dargs)
+    return PamAuthenticator().authenticate(*vargs, **dargs)
 
 
 if __name__ == "__main__":
@@ -278,7 +282,7 @@ if __name__ == "__main__":
         readline.set_pre_input_hook(hook)
 
         if sys.version_info >= (3,):
-            result = input(prompt)
+            result = input(prompt)  # nosec (bandit; python2)
         else:
             result = raw_input(prompt)  # noqa:F821
 
@@ -286,7 +290,7 @@ if __name__ == "__main__":
 
         return result
 
-    pam = pam()
+    pam = PamAuthenticator()
 
     username = input_with_prefill('Username: ', getpass.getuser())
 
