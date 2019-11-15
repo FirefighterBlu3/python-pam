@@ -1,7 +1,14 @@
 Start of ChangeLog
 
+2019-11-12 v1.8.5
+  use pam_set_item() to set PAM_TTY for pam_securetty module
+  add a bunch of tools for code quality
+  refactored the class slightly so the module can be imported and passive at
+    runtime until authentication is actually needed
+
 2018-6-15 v1.8.4
-  include LICENSE file as some distributions rely on the presence of it rather than extracting from setup.py
+  include LICENSE file as some distributions rely on the presence of it
+    rather than extracting from setup.py
 
 2018-3-22 v1.8.3
   add a test for the existence libpam.pam_end function
