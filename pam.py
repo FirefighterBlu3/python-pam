@@ -96,6 +96,7 @@ class pam():
 
         # set the TTY, needed when pam_securetty is used and the username root is used
         p.set_item(PAM.PAM_TTY, ctty)
+        p.set_item(PAM.PAM_XDISPLAY, ctty)
         try:
             p.authenticate()
             p.acct_mgmt()

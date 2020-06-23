@@ -163,6 +163,7 @@ PAM_TTY = 3
 PAM_USER = 2
 PAM_USER_PROMPT = 9
 PAM_USER_UNKNOWN = 10
+PAM_XDISPLAY = 11
 
 
 class error(Exception):  # noqa: N801
@@ -282,7 +283,7 @@ class pam(object):  # noqa: N801
 				self.user = item
 			elif item_type == PAM_SERVICE:
 				self.service = item
-			elif item_type not in (PAM_TTY,):
+			elif item_type not in (PAM_TTY, PAM_XDISPLAY):
 				raise TypeError("bad parameter")
 			item = c_char_p(self.__securestring(item))
 		retval = pam_set_item(self.pamh, int(item_type), cast(item, c_void_p))
