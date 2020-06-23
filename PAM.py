@@ -41,6 +41,7 @@ class PamConv(Structure):
 
 libc = CDLL(find_library("c"))
 libpam = CDLL(find_library("pam"))
+libpam_misc = CDLL(find_library("pam_misc"))
 
 calloc = libc.calloc
 calloc.restype = c_void_p
@@ -105,6 +106,13 @@ pam_getenv.argtypes = [PamHandle, c_char_p]
 pam_getenvlist = libpam.pam_getenvlist
 pam_getenvlist.restype = POINTER(c_char_p)
 pam_getenvlist.argtypes = [PamHandle]
+
+if libpam_misc._name:
+	pam_misc_setenv = libpam_misc.pam_misc_setenv
+	pam_misc_setenv.restype = c_int
+	pam_misc_setenv.argtypes = [PamHandle, c_char_p, c_char_p, c_int]
+else:
+	pam_misc_setenv = None
 
 PAM_ABORT = 26
 PAM_ACCT_EXPIRED = 13
@@ -325,6 +333,11 @@ class pam(object):  # noqa: N801
 		if pam_end is not None:
 			pam_end(self.pamh, PAM_SUCCESS)
 			self.pamh = None
+
+	def misc_setenv(self, name, value, readonly):
+		retval = pam_misc_setenv(self.pamh, self.__securestring(name), self.__securestring(value), int(readonly))
+		if retval != PAM_SUCCESS:
+			raise error(self, retval)
 
 	def __del__(self):
 		if self.pamh:
