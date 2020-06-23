@@ -28,84 +28,8 @@ __released__ = '2019 November 12'
 import os
 import sys
 
-from ctypes import CDLL, POINTER, Structure, CFUNCTYPE, cast, byref, sizeof
-from ctypes import c_void_p, c_size_t, c_char_p, c_char, c_int
-from ctypes import memmove
-from ctypes.util import find_library
+import PAM
 
-class PamHandle(Structure):
-    """wrapper class for pam_handle_t pointer"""
-    _fields_ = [ ("handle", c_void_p) ]
-
-    def __init__(self):
-        Structure.__init__(self)
-        self.handle = 0
-
-class PamMessage(Structure):
-    """wrapper class for pam_message structure"""
-    _fields_ = [ ("msg_style", c_int), ("msg", c_char_p) ]
-
-    def __repr__(self):
-        return "<PamMessage %i '%s'>" % (self.msg_style, self.msg)
-
-class PamResponse(Structure):
-    """wrapper class for pam_response structure"""
-    _fields_ = [ ("resp", c_char_p), ("resp_retcode", c_int) ]
-
-    def __repr__(self):
-        return "<PamResponse %i '%s'>" % (self.resp_retcode, self.resp)
-
-conv_func = CFUNCTYPE(c_int, c_int, POINTER(POINTER(PamMessage)), POINTER(POINTER(PamResponse)), c_void_p)
-
-class PamConv(Structure):
-    """wrapper class for pam_conv structure"""
-    _fields_ = [ ("conv", conv_func), ("appdata_ptr", c_void_p) ]
-
-# Various constants
-PAM_PROMPT_ECHO_OFF       = 1
-PAM_PROMPT_ECHO_ON        = 2
-PAM_ERROR_MSG             = 3
-PAM_TEXT_INFO             = 4
-PAM_REINITIALIZE_CRED     = 8
-
-PAM_TTY                   = 3
-
-libc                      = CDLL(find_library("c"))
-libpam                    = CDLL(find_library("pam"))
-
-calloc                    = libc.calloc
-calloc.restype            = c_void_p
-calloc.argtypes           = [c_size_t, c_size_t]
-
-# bug #6 (@NIPE-SYSTEMS), some libpam versions don't include this function
-if hasattr(libpam, 'pam_end'):
-    pam_end                   = libpam.pam_end
-    pam_end.restype           = c_int
-    pam_end.argtypes          = [PamHandle, c_int]
-
-pam_start                 = libpam.pam_start
-pam_start.restype         = c_int
-pam_start.argtypes        = [c_char_p, c_char_p, POINTER(PamConv), POINTER(PamHandle)]
-
-pam_acct_mgmt             = libpam.pam_acct_mgmt
-pam_acct_mgmt.restype     = c_int
-pam_acct_mgmt.argtypes    = [PamHandle, c_int]
-
-pam_set_item               = libpam.pam_set_item
-pam_set_item.restype       = c_int
-pam_set_item.argtypes      = [PamHandle, c_int, c_void_p]
-
-pam_setcred               = libpam.pam_setcred
-pam_setcred.restype       = c_int
-pam_setcred.argtypes      = [PamHandle, c_int]
-
-pam_strerror              = libpam.pam_strerror
-pam_strerror.restype      = c_char_p
-pam_strerror.argtypes     = [PamHandle, c_int]
-
-pam_authenticate          = libpam.pam_authenticate
-pam_authenticate.restype  = c_int
-pam_authenticate.argtypes = [PamHandle, c_int]
 
 class pam():
     code   = 0
@@ -136,22 +60,6 @@ class pam():
           failure:  False
         """
 
-        @conv_func
-        def my_conv(n_messages, messages, p_response, app_data):
-            """Simple conversation function that responds to any
-               prompt where the echo is off with the supplied password"""
-            # Create an array of n_messages response objects
-            addr = calloc(n_messages, sizeof(PamResponse))
-            response = cast(addr, POINTER(PamResponse))
-            p_response[0] = response
-            for i in range(n_messages):
-                if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
-                    dst = calloc(len(password)+1, sizeof(c_char))
-                    memmove(dst, cpassword, len(password))
-                    response[i].resp = dst
-                    response[i].resp_retcode = 0
-            return 0
-
         # python3 ctypes prefers bytes
         if sys.version_info >= (3,):
             if isinstance(username, str): username = username.encode(encoding)
@@ -165,52 +73,45 @@ class pam():
             if isinstance(service, unicode):
                 service  = service.encode(encoding)
 
-        if b'\x00' in username or b'\x00' in password or b'\x00' in service:
-            self.code = 4  # PAM_SYSTEM_ERR in Linux-PAM
-            self.reason = 'strings may not contain NUL'
-            return False
-
-        # do this up front so we can safely throw an exception if there's
-        # anything wrong with it
-        cpassword = c_char_p(password)
+        def conv(pam_self, query_list, user_data):
+            response = []
+            for prompt, msg in query_list:
+                if msg == PAM.PAM_PROMPT_ECHO_OFF:
+                    response.append((password, PAM.PAM_SUCCESS))
+                else:
+                    response.append((b'', PAM.PAM_SUCCESS))
+            return response
 
         # if X DISPLAY is set, use it, otherwise get the STDIN tty
         ctty = os.environ.get('DISPLAY', os.ttyname(0)).encode(encoding)
-        ctty = c_char_p(ctty)
 
-        handle = PamHandle()
-        conv   = PamConv(my_conv, 0)
-        retval = pam_start(service, username, byref(conv), byref(handle))
-
-        if retval != 0:
+        p = PAM.pam()
+        try:
+            p.start(service, username, conv)
+        except PAM.error as exc:
             # This is not an authentication error, something has gone wrong starting up PAM
-            self.code   = retval
+            self.code   = exc.errno
             self.reason = "pam_start() failed"
             return False
 
         # set the TTY, needed when pam_securetty is used and the username root is used
-        pam_set_item(handle, PAM_TTY, ctty)
-
-        retval = pam_authenticate(handle, 0)
-        auth_success = retval == 0
-
-        if auth_success:
-            retval = pam_acct_mgmt(handle, 0)
-            auth_success = retval == 0
-
-        if auth_success and resetcreds:
-            retval = pam_setcred(handle, PAM_REINITIALIZE_CRED)
-
-        # store information to inform the caller why we failed
-        self.code   = retval
-        self.reason = pam_strerror(handle, retval)
+        p.set_item(PAM.PAM_TTY, ctty)
+        try:
+            p.authenticate()
+            p.acct_mgmt()
+            if resetcreds:
+                p.setcred(PAM.PAM_REINITIALIZE_CRED)
+        except PAM.error as exc:
+            self.code   = exc.errno
+            self.reason = exc.args[0]
+        else:
+            self.code = PAM.PAM_SUCCESS
+            self.reason = b'Success'
+        finally:
+            p.end()
         if sys.version_info >= (3,):
             self.reason = self.reason.decode(encoding)
-
-        if hasattr(libpam, 'pam_end'):
-            pam_end(handle, retval)
-
-        return auth_success
+        return self.code == PAM.PAM_SUCCESS
 
 
 def authenticate(*vargs, **dargs):
