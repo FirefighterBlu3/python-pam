@@ -1,348 +1,501 @@
-from ctypes import CDLL, POINTER, Structure, CFUNCTYPE, cast, byref, sizeof
-from ctypes import c_void_p, c_size_t, c_char_p, c_char, c_int
+import os
+import six
+import sys
+from ctypes import CFUNCTYPE
+from ctypes import CDLL
+from ctypes import POINTER
+from ctypes import Structure
+from ctypes import byref
+from ctypes import cast
+from ctypes import sizeof
+from ctypes import c_char
+from ctypes import c_char_p
+from ctypes import c_int
+from ctypes import c_size_t
+from ctypes import c_void_p
 from ctypes import memmove
 from ctypes.util import find_library
 
-__all__ = ('PAM_ABORT', 'PAM_ACCT_EXPIRED', 'PAM_AUTHINFO_UNAVAIL', 'PAM_AUTHTOK_DISABLE_AGING', 'PAM_AUTHTOK_ERR', 'PAM_AUTHTOK_EXPIRED', 'PAM_AUTHTOK_LOCK_BUSY', 'PAM_AUTHTOK_RECOVER_ERR', 'PAM_AUTH_ERR', 'PAM_BAD_ITEM', 'PAM_BUF_ERR', 'PAM_CHANGE_EXPIRED_AUTHTOK', 'PAM_CONV', 'PAM_CONV_ERR', 'PAM_CRED_ERR', 'PAM_CRED_EXPIRED', 'PAM_CRED_INSUFFICIENT', 'PAM_CRED_UNAVAIL', 'PAM_DATA_SILENT', 'PAM_DELETE_CRED', 'PAM_DISALLOW_NULL_AUTHTOK', 'PAM_ERROR_MSG', 'PAM_ESTABLISH_CRED', 'PAM_IGNORE', 'PAM_MAXTRIES', 'PAM_MODULE_UNKNOWN', 'PAM_NEW_AUTHTOK_REQD', 'PAM_NO_MODULE_DATA', 'PAM_OPEN_ERR', 'PAM_PERM_DENIED', 'PAM_PROMPT_ECHO_OFF', 'PAM_PROMPT_ECHO_ON', 'PAM_REFRESH_CRED', 'PAM_REINITIALIZE_CRED', 'PAM_RHOST', 'PAM_RUSER', 'PAM_SERVICE', 'PAM_SERVICE_ERR', 'PAM_SESSION_ERR', 'PAM_SILENT', 'PAM_SUCCESS', 'PAM_SYMBOL_ERR', 'PAM_SYSTEM_ERR', 'PAM_TEXT_INFO', 'PAM_TRY_AGAIN', 'PAM_TTY', 'PAM_USER', 'PAM_USER_PROMPT', 'PAM_USER_UNKNOWN', 'error', 'pam')
+PAM_ABORT = 26  # pragma: no cover
+PAM_ACCT_EXPIRED = 13  # pragma: no cover
+PAM_AUTHINFO_UNAVAIL = 9  # pragma: no cover
+PAM_AUTHTOK_DISABLE_AGING = 23  # pragma: no cover
+PAM_AUTHTOK_ERR = 20  # pragma: no cover
+PAM_AUTHTOK_EXPIRED = 27  # pragma: no cover
+PAM_AUTHTOK_LOCK_BUSY = 22  # pragma: no cover
+PAM_AUTHTOK_RECOVER_ERR = 21  # pragma: no cover
+PAM_AUTH_ERR = 7  # pragma: no cover
+PAM_BAD_ITEM = 29  # pragma: no cover
+PAM_BUF_ERR = 5  # pragma: no cover
+PAM_CHANGE_EXPIRED_AUTHTOK = 32  # pragma: no cover
+PAM_CONV = 5  # pragma: no cover
+PAM_CONV_ERR = 19  # pragma: no cover
+PAM_CRED_ERR = 17  # pragma: no cover
+PAM_CRED_EXPIRED = 16  # pragma: no cover
+PAM_CRED_INSUFFICIENT = 8  # pragma: no cover
+PAM_CRED_UNAVAIL = 15  # pragma: no cover
+PAM_DATA_SILENT = 1073741824  # pragma: no cover
+PAM_DELETE_CRED = 4  # pragma: no cover
+PAM_DISALLOW_NULL_AUTHTOK = 1  # pragma: no cover
+PAM_ERROR_MSG = 3  # pragma: no cover
+PAM_ESTABLISH_CRED = 2  # pragma: no cover
+PAM_IGNORE = 25  # pragma: no cover
+PAM_MAXTRIES = 11  # pragma: no cover
+PAM_MODULE_UNKNOWN = 28  # pragma: no cover
+PAM_NEW_AUTHTOK_REQD = 12  # pragma: no cover
+PAM_NO_MODULE_DATA = 18  # pragma: no cover
+PAM_OPEN_ERR = 1  # pragma: no cover
+PAM_PERM_DENIED = 6  # pragma: no cover
+PAM_PROMPT_ECHO_OFF = 1  # pragma: no cover
+PAM_PROMPT_ECHO_ON = 2  # pragma: no cover
+PAM_REFRESH_CRED = 16  # pragma: no cover
+PAM_REINITIALIZE_CRED = 8  # pragma: no cover
+PAM_RHOST = 4  # pragma: no cover
+PAM_RUSER = 8  # pragma: no cover
+PAM_SERVICE = 1  # pragma: no cover
+PAM_SERVICE_ERR = 3  # pragma: no cover
+PAM_SESSION_ERR = 14  # pragma: no cover
+PAM_SILENT = 32768  # pragma: no cover
+PAM_SUCCESS = 0  # pragma: no cover
+PAM_SYMBOL_ERR = 2  # pragma: no cover
+PAM_SYSTEM_ERR = 4  # pragma: no cover
+PAM_TEXT_INFO = 4  # pragma: no cover
+PAM_TRY_AGAIN = 24  # pragma: no cover
+PAM_TTY = 3  # pragma: no cover
+PAM_USER = 2  # pragma: no cover
+PAM_USER_PROMPT = 9  # pragma: no cover
+PAM_USER_UNKNOWN = 10  # pragma: no cover
+PAM_XDISPLAY = 11  # pragma: no cover
+
+__all__ = ('PAM_ABORT', 'PAM_ACCT_EXPIRED', 'PAM_AUTHINFO_UNAVAIL',
+           'PAM_AUTHTOK_DISABLE_AGING', 'PAM_AUTHTOK_ERR',
+           'PAM_AUTHTOK_EXPIRED', 'PAM_AUTHTOK_LOCK_BUSY',
+           'PAM_AUTHTOK_RECOVER_ERR', 'PAM_AUTH_ERR', 'PAM_BAD_ITEM',
+           'PAM_BUF_ERR', 'PAM_CHANGE_EXPIRED_AUTHTOK', 'PAM_CONV',
+           'PAM_CONV_ERR', 'PAM_CRED_ERR', 'PAM_CRED_EXPIRED',
+           'PAM_CRED_INSUFFICIENT', 'PAM_CRED_UNAVAIL', 'PAM_DATA_SILENT',
+           'PAM_DELETE_CRED', 'PAM_DISALLOW_NULL_AUTHTOK', 'PAM_ERROR_MSG',
+           'PAM_ESTABLISH_CRED', 'PAM_IGNORE', 'PAM_MAXTRIES',
+           'PAM_MODULE_UNKNOWN', 'PAM_NEW_AUTHTOK_REQD', 'PAM_NO_MODULE_DATA',
+           'PAM_OPEN_ERR', 'PAM_PERM_DENIED', 'PAM_PROMPT_ECHO_OFF',
+           'PAM_PROMPT_ECHO_ON', 'PAM_REFRESH_CRED', 'PAM_REINITIALIZE_CRED',
+           'PAM_RHOST', 'PAM_RUSER', 'PAM_SERVICE', 'PAM_SERVICE_ERR',
+           'PAM_SESSION_ERR', 'PAM_SILENT', 'PAM_SUCCESS', 'PAM_SYMBOL_ERR',
+           'PAM_SYSTEM_ERR', 'PAM_TEXT_INFO', 'PAM_TRY_AGAIN', 'PAM_TTY',
+           'PAM_USER', 'PAM_USER_PROMPT', 'PAM_USER_UNKNOWN')
 
 
 class PamHandle(Structure):
-	"""wrapper class for pam_handle_t pointer"""
-	_fields_ = [("handle", c_void_p)]
+    """wrapper class for pam_handle_t pointer"""
+    _fields_ = [("handle", c_void_p)]  # pragma: no cover
 
-	def __init__(self):
-		Structure.__init__(self)
-		self.handle = 0
+    def __init__(self):
+        super().__init__()
+        self.handle = 0
+
+    def __repr__(self):  # pragma: no cover
+        return f"<PamHandle {self.handle}>"
 
 
 class PamMessage(Structure):
-	"""wrapper class for pam_message structure"""
-	_fields_ = [("msg_style", c_int), ("msg", c_char_p)]
+    """wrapper class for pam_message structure"""
+    _fields_ = [("msg_style", c_int), ("msg", c_char_p)]  # pragma: no cover
 
-	def __repr__(self):
-		return "<PamMessage %i '%s'>" % (self.msg_style, self.msg)
+    def __repr__(self):  # pragma: no cover
+        return "<PamMessage %i '%s'>" % (self.msg_style, self.msg)
 
 
 class PamResponse(Structure):
-	"""wrapper class for pam_response structure"""
-	_fields_ = [("resp", c_char_p), ("resp_retcode", c_int)]
+    """wrapper class for pam_response structure"""
+    _fields_ = [("resp", c_char_p), ("resp_retcode", c_int)]  # pragma: no cover
 
-	def __repr__(self):
-		return "<PamResponse %i '%s'>" % (self.resp_retcode, self.resp)
+    def __repr__(self):  # pragma: no cover
+        return "<PamResponse %i '%s'>" % (self.resp_retcode, self.resp)
 
 
-conv_func = CFUNCTYPE(c_int, c_int, POINTER(POINTER(PamMessage)), POINTER(POINTER(PamResponse)), c_void_p)
+conv_func = CFUNCTYPE(c_int,
+                      c_int,
+                      POINTER(POINTER(PamMessage)),
+                      POINTER(POINTER(PamResponse)),
+                      c_void_p)
 
 
 class PamConv(Structure):
-	"""wrapper class for pam_conv structure"""
-	_fields_ = [("conv", conv_func), ("appdata_ptr", c_void_p)]
+    """wrapper class for pam_conv structure"""
+    _fields_ = [("conv", conv_func), ("appdata_ptr", c_void_p)]  # pragma: no cover
 
 
-libc = CDLL(find_library("c"))
-libpam = CDLL(find_library("pam"))
-libpam_misc = CDLL(find_library("pam_misc"))
+class PamAuthenticator:
+    code = 0
+    reason = None
 
-calloc = libc.calloc
-calloc.restype = c_void_p
-calloc.argtypes = [c_size_t, c_size_t]
+    def __init__(self):
+        libc = CDLL(find_library("c"))
+        libpam = CDLL(find_library("pam"))
+        libpam_misc = CDLL(find_library("pam_misc"))
 
-# bug #6 (@NIPE-SYSTEMS), some libpam versions don't include this function
-if hasattr(libpam, 'pam_end'):
-	pam_end = libpam.pam_end
-	pam_end.restype = c_int
-	pam_end.argtypes = [PamHandle, c_int]
-else:
-	pam_end = None
+        self.handle = None
+        self.messages = []
 
-pam_start = libpam.pam_start
-pam_start.restype = c_int
-pam_start.argtypes = [c_char_p, c_char_p, POINTER(PamConv), POINTER(PamHandle)]
+        self.calloc = libc.calloc
+        self.calloc.restype = c_void_p
+        self.calloc.argtypes = [c_size_t, c_size_t]
 
-pam_setcred = libpam.pam_setcred
-pam_setcred.restype = c_int
-pam_setcred.argtypes = [PamHandle, c_int]
+        # bug #6 (@NIPE-SYSTEMS), some libpam versions don't include this
+        # function
+        if hasattr(libpam, 'pam_end'):
+            self.pam_end = libpam.pam_end
+            self.pam_end.restype = c_int
+            self.pam_end.argtypes = [PamHandle, c_int]
 
-pam_strerror = libpam.pam_strerror
-pam_strerror.restype = c_char_p
-pam_strerror.argtypes = [PamHandle, c_int]
+        self.pam_start = libpam.pam_start
+        self.pam_start.restype = c_int
+        self.pam_start.argtypes = [c_char_p, c_char_p, POINTER(PamConv),
+                                   POINTER(PamHandle)]
 
-pam_authenticate = libpam.pam_authenticate
-pam_authenticate.restype = c_int
-pam_authenticate.argtypes = [PamHandle, c_int]
+        self.pam_acct_mgmt = libpam.pam_acct_mgmt
+        self.pam_acct_mgmt.restype = c_int
+        self.pam_acct_mgmt.argtypes = [PamHandle, c_int]
 
-pam_acct_mgmt = libpam.pam_acct_mgmt
-pam_acct_mgmt.restype = c_int
-pam_acct_mgmt.argtypes = [PamHandle, c_int]
+        self.pam_set_item = libpam.pam_set_item
+        self.pam_set_item.restype = c_int
+        self.pam_set_item.argtypes = [PamHandle, c_int, c_void_p]
 
-pam_chauthtok = libpam.pam_chauthtok
-pam_chauthtok.restype = c_int
-pam_chauthtok.argtypes = [PamHandle, c_int]
+        self.pam_setcred = libpam.pam_setcred
+        self.pam_strerror = libpam.pam_strerror
+        self.pam_strerror.restype = c_char_p
+        self.pam_strerror.argtypes = [PamHandle, c_int]
 
-pam_open_session = libpam.pam_open_session
-pam_open_session.restype = c_int
-pam_open_session.argtypes = [PamHandle, c_int]
+        self.pam_authenticate = libpam.pam_authenticate
+        self.pam_authenticate.restype = c_int
+        self.pam_authenticate.argtypes = [PamHandle, c_int]
 
-pam_close_session = libpam.pam_close_session
-pam_close_session.restype = c_int
-pam_close_session.argtypes = [PamHandle, c_int]
+        self.pam_open_session = libpam.pam_open_session
+        self.pam_open_session.restype = c_int
+        self.pam_open_session.argtypes = [PamHandle, c_int]
 
-pam_set_item = libpam.pam_set_item
-pam_set_item.restype = c_int
-pam_set_item.argtypes = [PamHandle, c_int, c_void_p]
+        self.pam_close_session = libpam.pam_close_session
+        self.pam_close_session.restype = c_int
+        self.pam_close_session.argtypes = [PamHandle, c_int]
 
-pam_get_item = libpam.pam_get_item
-pam_get_item.restype = c_int
-pam_get_item.argtypes = [PamHandle, c_int, POINTER(c_void_p)]
+        self.pam_putenv = libpam.pam_putenv
+        self.pam_putenv.restype = c_int
+        self.pam_putenv.argtypes = [PamHandle, c_char_p]
 
-pam_putenv = libpam.pam_putenv
-pam_putenv.restype = c_int
-pam_putenv.argtypes = [PamHandle, c_char_p]
+        if libpam_misc._name:
+            self.pam_misc_setenv = libpam_misc.pam_misc_setenv
+            self.pam_misc_setenv.restype = c_int
+            self.pam_misc_setenv.argtypes = [PamHandle, c_char_p, c_char_p,
+                                             c_int]
 
-pam_getenv = libpam.pam_getenv
-pam_getenv.restype = c_char_p
-pam_getenv.argtypes = [PamHandle, c_char_p]
+        self.pam_getenv = libpam.pam_getenv
+        self.pam_getenv.restype = c_char_p
+        self.pam_getenv.argtypes = [PamHandle, c_char_p]
 
-pam_getenvlist = libpam.pam_getenvlist
-pam_getenvlist.restype = POINTER(c_char_p)
-pam_getenvlist.argtypes = [PamHandle]
+        self.pam_getenvlist = libpam.pam_getenvlist
+        self.pam_getenvlist.restype = POINTER(c_char_p)
+        self.pam_getenvlist.argtypes = [PamHandle]
 
-if libpam_misc._name:
-	pam_misc_setenv = libpam_misc.pam_misc_setenv
-	pam_misc_setenv.restype = c_int
-	pam_misc_setenv.argtypes = [PamHandle, c_char_p, c_char_p, c_int]
-else:
-	pam_misc_setenv = None
+    def authenticate(
+                self,
+                username,
+                password,
+                service='login',
+                env=None,
+                call_end=True,
+                encoding='utf-8',
+                resetcreds=True):
+        self.pam_authenticate.__annotations = {'username': str,
+                                               'password': str,
+                                               'service': str,
+                                               'env': dict,
+                                               'call_end': bool,
+                                               'encoding': str,
+                                               'resetcreds': bool,
+                                               'return': bool}
+        """username and password authentication for the given service.
 
-PAM_ABORT = 26
-PAM_ACCT_EXPIRED = 13
-PAM_AUTHINFO_UNAVAIL = 9
-PAM_AUTHTOK_DISABLE_AGING = 23
-PAM_AUTHTOK_ERR = 20
-PAM_AUTHTOK_EXPIRED = 27
-PAM_AUTHTOK_LOCK_BUSY = 22
-PAM_AUTHTOK_RECOVER_ERR = 21
-PAM_AUTH_ERR = 7
-PAM_BAD_ITEM = 29
-PAM_BUF_ERR = 5
-PAM_CHANGE_EXPIRED_AUTHTOK = 32
-PAM_CONV = 5
-PAM_CONV_ERR = 19
-PAM_CRED_ERR = 17
-PAM_CRED_EXPIRED = 16
-PAM_CRED_INSUFFICIENT = 8
-PAM_CRED_UNAVAIL = 15
-PAM_DATA_SILENT = 1073741824
-PAM_DELETE_CRED = 4
-PAM_DISALLOW_NULL_AUTHTOK = 1
-PAM_ERROR_MSG = 3
-PAM_ESTABLISH_CRED = 2
-PAM_IGNORE = 25
-PAM_MAXTRIES = 11
-PAM_MODULE_UNKNOWN = 28
-PAM_NEW_AUTHTOK_REQD = 12
-PAM_NO_MODULE_DATA = 18
-PAM_OPEN_ERR = 1
-PAM_PERM_DENIED = 6
-PAM_PROMPT_ECHO_OFF = 1
-PAM_PROMPT_ECHO_ON = 2
-PAM_REFRESH_CRED = 16
-PAM_REINITIALIZE_CRED = 8
-PAM_RHOST = 4
-PAM_RUSER = 8
-PAM_SERVICE = 1
-PAM_SERVICE_ERR = 3
-PAM_SESSION_ERR = 14
-PAM_SILENT = 32768
-PAM_SUCCESS = 0
-PAM_SYMBOL_ERR = 2
-PAM_SYSTEM_ERR = 4
-PAM_TEXT_INFO = 4
-PAM_TRY_AGAIN = 24
-PAM_TTY = 3
-PAM_USER = 2
-PAM_USER_PROMPT = 9
-PAM_USER_UNKNOWN = 10
-PAM_XDISPLAY = 11
+        Returns True for success, or False for failure.
 
+        self.code (integer) and self.reason (string) are always stored and may
+        be referenced for the reason why authentication failed. 0/'Success'
+        will be stored for success.
 
-class error(Exception):  # noqa: N801
+        Python3 expects bytes() for ctypes inputs.  This function will make
+        necessary conversions using the supplied encoding.
 
-	def __init__(self, pam, errno):
-		self.errno = errno
-		super(error, self).__init__(pam_strerror(pam.pamh, errno), errno)
+        Args:
+          username: username to authenticate
+          password: password in plain text
+          service:  PAM service to authenticate against, defaults to 'login'
+          env:      Pam environment variables
+          call_end: call the pam_end() function after (default true)
 
+        Returns:
+          success:  True
+          failure:  False
+        """
 
-class pam(object):  # noqa: N801
+        @conv_func
+        def my_conv(n_messages, messages, p_response, app_data):
+            """Simple conversation function that responds to any
+               prompt where the echo is off with the supplied password"""
+            # Create an array of n_messages response objects
+            addr = self.calloc(n_messages, sizeof(PamResponse))
+            response = cast(addr, POINTER(PamResponse))
+            p_response[0] = response
 
-	__slots__ = ('pamh', 'conv', 'service', 'user', 'user_data', 'callback')
+            for i in range(n_messages):
+                message = messages[i].contents.msg
+                if sys.version_info >= (3,):
+                    message = message.decode(encoding)
 
-	def __init__(self):
-		self.pamh = PamHandle()
-		self.conv = None
-		self.callback = None
-		self.service = None
-		self.user = None
-		self.user_data = None
-		self.__set_conversation(None)
+                self.messages.append(message)
 
-	def start(self, service=None, user=None, callback=None):
-		if service:
-			self.service = self.__securestring(service)
-		if user:
-			self.user = self.__securestring(user)
-		if callback:
-			self.__set_conversation(callback)
+                if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
+                    dst = self.calloc(len(password)+1, sizeof(c_char))
+                    memmove(dst, cpassword, len(password))
+                    response[i].resp = dst
+                    response[i].resp_retcode = 0
 
-		retval = pam_start(self.service, self.user, byref(self.callback), byref(self.pamh))
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+            return PAM_SUCCESS
 
-	def __set_conversation(self, conv):
-		self.conv = conv
+        if isinstance(username, six.text_type):
+            username = username.encode(encoding)
+        if isinstance(password, six.text_type):
+            password = password.encode(encoding)
+        if isinstance(service, six.text_type):
+            service = service.encode(encoding)
 
-		@conv_func
-		def callback(n_messages, messages, p_response, app_data):
-			messages = [messages[i] for i in range(n_messages)]
-			# Create an array of n_messages response objects
-			addr = calloc(n_messages, sizeof(PamResponse))
-			response = cast(addr, POINTER(PamResponse))
-			p_response[0] = response
+        if b'\x00' in username or b'\x00' in password or b'\x00' in service:
+            self.code = PAM_SYSTEM_ERR
+            self.reason = ('none of username, password, or service may contain'
+                           ' NUL')
+            raise ValueError(self.reason)
 
-			if conv is None:
-				return PAM_CONV_ERR
+        # do this up front so we can safely throw an exception if there's
+        # anything wrong with it
+        cpassword = c_char_p(password)
 
-			query_list = [(x.contents.msg, x.contents.msg_style) for x in messages]
-			try:
-				result_list = conv(self, query_list, self.user_data)
-			except BaseException as exc:
-				import traceback
-				print('ExC', exc, traceback.format_exc())
-				return PAM_CONV_ERR
+        self.handle = PamHandle()
+        conv = PamConv(my_conv, 0)
+        retval = self.pam_start(service, username, byref(conv),
+                                byref(self.handle))
 
-			if not isinstance(result_list, list):
-				return PAM_CONV_ERR
+        if retval != PAM_SUCCESS:  # pragma: no cover
+            # This is not an authentication error, something has gone wrong
+            # starting up PAM
+            self.code = retval
+            self.reason = ("pam_start() failed: %s" %
+                           self.pam_strerror(self.handle, retval))
+            return retval
 
-			if len(result_list) != n_messages:
-				return PAM_CONV_ERR
+        # set the TTY, required when pam_securetty is used and the username
+        # root is used note: this is only needed WHEN the pam_securetty.so
+        # module is used; for checking /etc/securetty for allowing root
+        # logins.  if your application doesn't use a TTY or your pam setup
+        # doesn't involve pam_securetty for this auth path, don't worry
+        # about it
+        #
+        # if your app isn't authenticating root with the right password, you
+        # may not have the appropriate list of TTYs in /etc/securetty and/or
+        # the correct configuration in /etc/pam.d/*
+        #
+        # if X $DISPLAY is set, use it - otherwise if we have a STDIN tty,
+        # get it
 
-			for result, message, resp in zip(result_list, messages, response):
-				if not isinstance(result, tuple) or len(result) != 2:
-					return PAM_CONV_ERR
-				answer, retcode = result
-				if not isinstance(answer, bytes) or b'\x00' in answer or not isinstance(retcode, int):
-					return PAM_CONV_ERR
-				# if message.contents.msg_style == PAM_PROMPT_ECHO_OFF or 0:
-				dst = calloc(len(answer) + 1, sizeof(c_char))
-				memmove(dst, c_char_p(answer), len(answer))
-				resp.resp = dst
-				resp.resp_retcode = retcode
+        ctty = os.environ.get('DISPLAY')
+        if not ctty and os.isatty(0):
+            ctty = os.ttyname(0)
 
-			return PAM_SUCCESS
+        if ctty:
+            ctty = c_char_p(ctty.encode(encoding))
 
-		self.callback = PamConv(callback, 0)
+            retval = self.pam_set_item(self.handle, PAM_TTY, ctty)
+            retval = self.pam_set_item(self.handle, PAM_XDISPLAY, ctty)
 
-	def authenticate(self, flags=0):
-		retval = pam_authenticate(self.pamh, int(flags))
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+        # Set the environment variables if they were supplied
+        if env:
+            if not isinstance(env, dict):
+                raise TypeError('"env" must be a dict')
 
-	def setcred(self, flags=0):  # flags=PAM_REINITIALIZE_CRED ?
-		retval = pam_setcred(self.pamh, int(flags))
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+            for key, value in env.items():
+                if isinstance(key, bytes) and b'\x00' in key:
+                    raise ValueError('"env{}" key cannot contain NULLs')
+                if isinstance(value, bytes) and b'\x00' in value:
+                    raise ValueError('"env{}" value cannot contain NULLs')
 
-	def acct_mgmt(self, flags=0):
-		retval = pam_acct_mgmt(self.pamh, int(flags))
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+                name_value = "{}={}".format(key, value)
+                retval = self.putenv(name_value, encoding)
 
-	def chauthtok(self, flags=0):
-		retval = pam_chauthtok(self.pamh, int(flags))
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+        auth_success = self.pam_authenticate(self.handle, 0)
+        print(f'as1: {auth_success}')
 
-	def open_session(self, flags=0):
-		retval = pam_open_session(self.pamh, int(flags))
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+        if auth_success == PAM_SUCCESS:
+            auth_success = self.pam_acct_mgmt(self.handle, 0)
+        print(f'as2: {auth_success}')
 
-	def close_session(self, flags=0):
-		retval = pam_close_session(self.pamh, int(flags))
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+        if auth_success == PAM_SUCCESS and resetcreds:
+            auth_success = self.pam_setcred(self.handle, PAM_REINITIALIZE_CRED)
+        print(f'as3: {auth_success}')
 
-	def set_item(self, item_type, item):
-		if item_type == PAM_CONV:
-			if not callable(item):
-				raise TypeError("parameter must be a function")
-			self.__set_conversation(item)
-			item = byref(self.callback)
-		else:
-			if item_type == PAM_USER:
-				self.user = item
-			elif item_type == PAM_SERVICE:
-				self.service = item
-			elif item_type not in (PAM_TTY, PAM_XDISPLAY):
-				raise TypeError("bad parameter")
-			item = c_char_p(self.__securestring(item))
-		retval = pam_set_item(self.pamh, int(item_type), cast(item, c_void_p))
+        # store information to inform the caller why we failed
+        self.code = auth_success
+        self.reason = self.pam_strerror(self.handle, auth_success)
 
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+        if sys.version_info >= (3,):
+            self.reason = self.reason.decode(encoding)
 
-	def get_item(self, item_type):
-		item = byref(c_void_p())
-		retval = pam_get_item(self.pamh, int(item_type), item)
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
-		if item_type == PAM_CONV:
-			return cast(item, POINTER(PamConv)).contents.conv
-		return cast(item, POINTER(c_char_p)).contents.value
+        if call_end and hasattr(self, 'pam_end'):
+            self.pam_end(self.handle, auth_success)
+            self.handle = None
 
-	def putenv(self, value):
-		if not isinstance(value, bytes) or b'\x00' in value:
-			raise TypeError("parameter must be a string")
+        return auth_success
 
-		retval = pam_putenv(self.pamh, value)
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+    def end(self):
+        """A direct call to pam_end()
+        Returns:
+          Linux-PAM return value as int
+        """
+        if not self.handle or not hasattr(self, 'pam_end'):
+            return PAM_SYSTEM_ERR
 
-	def getenv(self, env):
-		return pam_getenv(self.pamh, env)
+        retval = self.pam_end(self.handle, self.code)
+        self.handle = None
 
-	def getenvlist(self):
-		env = []
-		for x in pam_getenvlist(self.pamh):
-			if x is None:
-				break
-			env.append(x)
-		return env
+        return retval
 
-	def setUserData(self, data):  # noqa: N802
-		self.user_data = data
+    def open_session(self, encoding='utf-8'):
+        """Call pam_open_session as required by the pam_api
+        Returns:
+          Linux-PAM return value as int
+        """
+        if not self.handle:
+            return PAM_SYSTEM_ERR
 
-	def __securestring(self, string):
-		if not isinstance(string, bytes):
-			raise TypeError('parameter must be a string')
-		if b'\x00' in string:
-			raise error(self, PAM_SYSTEM_ERR)
+        retval = self.pam_open_session(self.handle, 0)
+        self.code = retval
+        self.reason = self.pam_strerror(self.handle, retval)
 
-		return string
+        if sys.version_info >= (3,):
+            self.reason = self.reason.decode(encoding)
 
-	def end(self):
-		if pam_end is not None:
-			pam_end(self.pamh, PAM_SUCCESS)
-			self.pamh = None
+        return retval
 
-	def misc_setenv(self, name, value, readonly):
-		retval = pam_misc_setenv(self.pamh, self.__securestring(name), self.__securestring(value), int(readonly))
-		if retval != PAM_SUCCESS:
-			raise error(self, retval)
+    def close_session(self, encoding='utf-8'):
+        """Call pam_close_session as required by the pam_api
+        Returns:
+          Linux-PAM return value as int
+        """
+        if not self.handle:
+            return PAM_SYSTEM_ERR
 
-	def __del__(self):
-		if self.pamh:
-			self.end()
+        retval = self.pam_close_session(self.handle, 0)
+        self.code = retval
+        self.reason = self.pam_strerror(self.handle, retval)
 
-	def __repr__(self):
-		return '<pam object, service="%s", user="%s", conv=0x%x, pamh=0x%x>' % (self.service, self.user, id(self.callback), id(self.pamh))
+        if sys.version_info >= (3,):
+            self.reason = self.reason.decode(encoding)
+
+        return retval
+
+    def misc_setenv(self, name, value, readonly, encoding='utf-8'):
+        """A wrapper for the pam_misc_setenv function
+        Args:
+          name: key name of the environment variable
+          value: the value of the environment variable
+        Returns:
+          Linux-PAM return value as int
+        """
+        if not self.handle or not hasattr(self, "pam_misc_setenv"):
+            return PAM_SYSTEM_ERR
+
+        return self.pam_misc_setenv(self.handle,
+                                    name.encode(encoding),
+                                    value.encode(encoding),
+                                    readonly)
+
+    def putenv(self, name_value, encoding='utf-8'):
+        """A wrapper for the pam_putenv function
+        Args:
+          name_value: environment variable in the format KEY=VALUE
+                      Without an '=' delete the corresponding variable
+        Returns:
+          Linux-PAM return value as int
+        """
+        if not self.handle:
+            return PAM_SYSTEM_ERR
+
+        name_value = name_value.encode(encoding)
+
+        retval = self.pam_putenv(self.handle, name_value)
+        if retval != PAM_SUCCESS:
+            raise Exception(self.pam_strerror(self.handle, retval))
+
+        return retval
+
+    def getenv(self, key, encoding='utf-8'):
+        """A wrapper for the pam_getenv function
+        Args:
+          key name of the environment variable
+        Returns:
+          value of the environment variable or None on error
+        """
+        if not self.handle:
+            return PAM_SYSTEM_ERR
+
+        if sys.version_info >= (3, ):
+            if isinstance(key, six.text_type):
+                key = key.encode(encoding)
+
+        value = self.pam_getenv(self.handle, key)
+
+        if isinstance(value, type(None)):
+            return
+
+        if isinstance(value, int):  # pragma: no cover
+            raise Exception(self.pam_strerror(self.handle, value))
+
+        if sys.version_info >= (3,):
+            value = value.decode(encoding)
+
+        return value
+
+    def getenvlist(self, encoding='utf-8'):
+        """A wrapper for the pam_getenvlist function
+        Returns:
+          environment as python dictionary
+        """
+        if not self.handle:
+            return PAM_SYSTEM_ERR
+
+        env_list = self.pam_getenvlist(self.handle)
+
+        env_count = 0
+        pam_env_items = {}
+
+        while True:
+            try:
+                item = env_list[env_count]
+            except IndexError:  # pragma: no cover
+                break
+
+            if not item:
+                # end of the list
+                break
+
+            env_item = item
+            if sys.version_info >= (3,):
+                env_item = env_item.decode(encoding)
+
+            try:
+                pam_key, pam_value = env_item.split("=", 1)
+            except ValueError:  # pragma: no cover
+                # Incorrectly formatted envlist item
+                pass
+            else:
+                pam_env_items[pam_key] = pam_value
+
+            env_count += 1
+
+        return pam_env_items
