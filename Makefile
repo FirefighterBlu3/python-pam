@@ -1,10 +1,10 @@
 VIRTUALENV = $(shell which virtualenv)
 PYTHONEXEC = python
 
-VERSION = `grep VERSION src/version.py | cut -d \' -f2`
+VERSION = `grep VERSION version.py | cut -d \' -f2`
 
 bandit: pydeps
-	. venv/bin/activate; bandit -r src/
+	. venv/bin/activate; bandit -r pam/
 
 clean:
 	rm -rf *.egg-info/
@@ -26,7 +26,6 @@ console:
 
 coverage:
 	. venv/bin/activate; coverage html
-	. venv/bin/activate; coverage report
 
 current:
 	@echo $(VERSION)
@@ -38,20 +37,22 @@ install: clean venv deps
 	. venv/bin/activate; python setup.py install
 
 inspectortiger: pydeps
-	. venv/bin/activate; inspectortiger src/
+	. venv/bin/activate; inspectortiger pam/
 
 lint: pydeps
-	. venv/bin/activate; python -m flake8 src/
+	. venv/bin/activate; python -m flake8 pam/ --max-line-length=120
 
-preflight: bandit inspectortiger coverage test
+preflight: bandit coverage test
 
 pydeps:
-	. venv/bin/activate; pip install --upgrade -q pip flake8 bandit \
+	. venv/bin/activate; pip install --upgrade -q pip; \
+	  pip install --upgrade -q pip flake8 bandit \
 	  pyre-check coverage pytest pytest-mock pytest-cov pytest-runner \
-	  mock minimock faker responses inspectortiger
+	  mock minimock faker responses
 
 test: pydeps deps venv lint
-	. venv/bin/activate; py.test --cov=src tests -r w --capture=sys --cov-fail-under 99 -vv
+	. venv/bin/activate; pytest --cov=pam tests -r w --capture=sys -vvv; \
+	coverage html
 
 tox:
 	. venv/bin/activate; tox
