@@ -1,17 +1,19 @@
 import os
 from setuptools import setup
 
+
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-__sdesc = 'Python PAM module using ctypes, py3/py2'
+
+sdesc = 'Python PAM module using ctypes, py3/py2'
 
 setup(name             = 'python-pam',
-      description      =  __sdesc,
+      description      = sdesc,
       long_description = read('README.md'),
       long_description_content_type='text/markdown',
-      py_modules       = ['pam'],
-      version          = '1.8.5rc1',
+      packages         = find_packages(exclude=['tests']),
+      version          = '2.0.0rc1',
       author           = 'David Ford',
       author_email     = 'david@blue-labs.org',
       maintainer       = 'David Ford',
@@ -19,7 +21,7 @@ setup(name             = 'python-pam',
       url              = 'https://github.com/FirefighterBlu3/python-pam',
       download_url     = 'https://github.com/FirefighterBlu3/python-pam',
       license          = 'License :: OSI Approved :: MIT License',
-      platforms        = ['i686','x86_64'],
+      platforms        = ['i686', 'x86_64'],
       classifiers      = [
           'Development Status :: 6 - Mature',
           'Environment :: Plugins',
