@@ -253,9 +253,12 @@ class PamAuthenticator:
                 self.messages.append(message)
 
                 if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
-                    dst = self.calloc(len(password)+1, sizeof(c_char))
-                    memmove(dst, cpassword, len(password))
-                    response[i].resp = dst
+                    if i == 0:
+                        dst = self.calloc(len(password)+1, sizeof(c_char))
+                        memmove(dst, cpassword, len(password))
+                        response[i].resp = dst
+                    else:
+                        response[i].resp = None
                     response[i].resp_retcode = 0
 
             return PAM_SUCCESS
