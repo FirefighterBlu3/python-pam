@@ -329,15 +329,12 @@ class PamAuthenticator:
                 retval = self.putenv(name_value, encoding)
 
         auth_success = self.pam_authenticate(self.handle, 0)
-        print(f'as1: {auth_success}')
 
         if auth_success == PAM_SUCCESS:
             auth_success = self.pam_acct_mgmt(self.handle, 0)
-        print(f'as2: {auth_success}')
 
         if auth_success == PAM_SUCCESS and resetcreds:
             auth_success = self.pam_setcred(self.handle, PAM_REINITIALIZE_CRED)
-        print(f'as3: {auth_success}')
 
         # store information to inform the caller why we failed
         self.code = auth_success
