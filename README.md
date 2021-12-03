@@ -1,6 +1,6 @@
 # python-pam
 
-Python pam module supporting py3 (and py2)
+Python pam module supporting py3 (and py2) for Linux type systems (!windows)
 
 Commandline example:
 
@@ -44,4 +44,29 @@ False
 >>> print('{} {}'.format(p.code, p.reason))
 7 Authentication failure
 >>>
+```
+
+## Authentication and privileges
+Please note, python-pam and *all* tools that do authentication follow two rules:
+
+* You have root (or privileged access): you can check any account's password for validity
+* You don't have root: you can only check the validity of the username running the tool
+
+If you need to authenticate multiple users, you must use an authentication stack that at some stage has privileged access. On Linux systems one example of doing this is using SSSD.
+
+Typical Linux installations check against `/etc/shadow` with `pam_unix.so` which will spawn `/usr/bin/unix_chkpwd` to verify the password. Both of these are intentionally written to meet the above two rules. You can test the functionality of `unix_chkpwd` in the following manner:
+
+Replace `good` with the correct password, replace `david` with your appropriate username.
+
+```
+~$ mkfifo /tmp/myfifo
+
+~$ (echo -ne 'good\0' > /tmp/myfifo & /usr/bin/unix_chkpwd david nullok < /tmp/myfifo ) ; echo $?
+0
+
+~$ (echo -ne 'bad\0' > /tmp/myfifo & /usr/bin/unix_chkpwd david nullok < /tmp/myfifo ) ; echo $?
+7
+
+~$ (echo -ne 'good\0' > /tmp/myfifo & /usr/bin/unix_chkpwd someotheruser nullok < /tmp/myfifo ) ; echo $?
+9
 ```
