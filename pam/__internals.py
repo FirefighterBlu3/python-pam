@@ -83,7 +83,8 @@ __all__ = ('PAM_ABORT', 'PAM_ACCT_EXPIRED', 'PAM_AUTHINFO_UNAVAIL',
            'PAM_RHOST', 'PAM_RUSER', 'PAM_SERVICE', 'PAM_SERVICE_ERR',
            'PAM_SESSION_ERR', 'PAM_SILENT', 'PAM_SUCCESS', 'PAM_SYMBOL_ERR',
            'PAM_SYSTEM_ERR', 'PAM_TEXT_INFO', 'PAM_TRY_AGAIN', 'PAM_TTY',
-           'PAM_USER', 'PAM_USER_PROMPT', 'PAM_USER_UNKNOWN')
+           'PAM_USER', 'PAM_USER_PROMPT', 'PAM_USER_UNKNOWN',
+           'PamAuthenticator')
 
 
 class PamHandle(Structure):
@@ -210,7 +211,8 @@ class PamAuthenticator:
                 env=None,
                 call_end=True,
                 encoding='utf-8',
-                resetcreds=True):
+                resetcreds=True,
+                print_failure_messages=False):
         self.pam_authenticate.__annotations = {'username': str,
                                                'password': str,
                                                'service': str,
@@ -218,7 +220,8 @@ class PamAuthenticator:
                                                'call_end': bool,
                                                'encoding': str,
                                                'resetcreds': bool,
-                                               'return': bool}
+                                               'return': bool,
+                                               'print_failure_messages': bool}
         """username and password authentication for the given service.
 
         Returns True for success, or False for failure.
@@ -236,6 +239,7 @@ class PamAuthenticator:
           service:  PAM service to authenticate against, defaults to 'login'
           env:      Pam environment variables
           call_end: call the pam_end() function after (default true)
+          print_failure_messages: Print messages on failure
 
         Returns:
           success:  True
@@ -359,6 +363,9 @@ class PamAuthenticator:
         if call_end and hasattr(self, 'pam_end'):  # pragma: no branch
             self.pam_end(self.handle, auth_success)
             self.handle = None
+
+        if print_failure_messages and self.code != PAM_SUCCESS:
+            print(f"Failure: {self.reason}")
 
         return auth_success
 
