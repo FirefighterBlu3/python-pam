@@ -364,7 +364,7 @@ class PamAuthenticator:
             self.pam_end(self.handle, auth_success)
             self.handle = None
 
-        if print_failure_messages and self.code != PAM_SUCCESS:
+        if print_failure_messages and self.code != PAM_SUCCESS:  # pragma: no cover
             print(f"Failure: {self.reason}")
 
         return auth_success
