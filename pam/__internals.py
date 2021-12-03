@@ -1,4 +1,6 @@
 import os
+import six
+import sys
 import ctypes
 from ctypes import CFUNCTYPE
 from ctypes import CDLL
@@ -251,23 +253,28 @@ class PamAuthenticator:
 
             for i in range(n_messages):
                 message = messages[i].contents.msg
-                message = message.decode(encoding)
+                if sys.version_info >= (3,):  # pragma: no branch
+                    message = message.decode(encoding)
 
                 self.messages.append(message)
 
                 if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:  # pragma: no branch
-                    dst = self.calloc(len(password)+1, sizeof(c_char))
-                    memmove(dst, cpassword, len(password))
-                    response[i].resp = dst
+                    if i == 0:  # pragma: no branch
+                        dst = self.calloc(len(password)+1, sizeof(c_char))
+                        memmove(dst, cpassword, len(password))
+                        response[i].resp = dst
+                    else:  # pragma: no cover
+                        response[i].resp = None
+
                     response[i].resp_retcode = 0
 
             return PAM_SUCCESS
 
-        if isinstance(username, str):
+        if isinstance(username, six.text_type):
             username = username.encode(encoding)
-        if isinstance(password, str):
+        if isinstance(password, six.text_type):
             password = password.encode(encoding)
-        if isinstance(service, str):
+        if isinstance(service, six.text_type):
             service = service.encode(encoding)
 
         if b'\x00' in username or b'\x00' in password or b'\x00' in service:
@@ -346,7 +353,8 @@ class PamAuthenticator:
         self.code = auth_success
         self.reason = self.pam_strerror(self.handle, auth_success)
 
-        self.reason = self.reason.decode(encoding)
+        if sys.version_info >= (3,):  # pragma: no branch
+            self.reason = self.reason.decode(encoding)
 
         if call_end and hasattr(self, 'pam_end'):  # pragma: no branch
             self.pam_end(self.handle, auth_success)
@@ -378,7 +386,9 @@ class PamAuthenticator:
         retval = self.pam_open_session(self.handle, 0)
         self.code = retval
         self.reason = self.pam_strerror(self.handle, retval)
-        self.reason = self.reason.decode(encoding)
+
+        if sys.version_info >= (3,):  # pragma: no branch
+            self.reason = self.reason.decode(encoding)
 
         return retval
 
@@ -393,7 +403,9 @@ class PamAuthenticator:
         retval = self.pam_close_session(self.handle, 0)
         self.code = retval
         self.reason = self.pam_strerror(self.handle, retval)
-        self.reason = self.reason.decode(encoding)
+
+        if sys.version_info >= (3,):  # pragma: no branch
+            self.reason = self.reason.decode(encoding)
 
         return retval
 
@@ -443,8 +455,9 @@ class PamAuthenticator:
             return PAM_SYSTEM_ERR
 
         #  can't happen unless someone is using internals directly
-        if isinstance(key, str):  # pragma: no branch
-            key = key.encode(encoding)
+        if sys.version_info >= (3, ):  # pragma: no branch
+            if isinstance(key, six.text_type):  # pragma: no branch
+                key = key.encode(encoding)
 
         value = self.pam_getenv(self.handle, key)
 
@@ -454,7 +467,8 @@ class PamAuthenticator:
         if isinstance(value, int):  # pragma: no cover
             raise Exception(self.pam_strerror(self.handle, value))
 
-        value = value.decode(encoding)
+        if sys.version_info >= (3,):  # pragma: no branch
+            value = value.decode(encoding)
 
         return value
 
@@ -482,7 +496,8 @@ class PamAuthenticator:
                 break
 
             env_item = item
-            env_item = env_item.decode(encoding)
+            if sys.version_info >= (3,):  # pragma: no branch
+                env_item = env_item.decode(encoding)
 
             try:
                 pam_key, pam_value = env_item.split("=", 1)
