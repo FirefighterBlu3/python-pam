@@ -30,6 +30,7 @@ a user against the Pluggable Authentication Modules (PAM) on the system.
 Implemented using ctypes, so no compilation is necessary.
 '''
 
+import six
 import __internals
 
 if __name__ == "__main__":  # pragma: no cover
@@ -42,7 +43,7 @@ if __name__ == "__main__":  # pragma: no cover
             readline.redisplay()
 
         readline.set_pre_input_hook(hook)
-        result = input(prompt)  # nosec (bandit; python2)
+        result = six.input(prompt)  # nosec (bandit; python2)
 
         readline.set_pre_input_hook()
 
