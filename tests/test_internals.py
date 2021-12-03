@@ -3,16 +3,16 @@ import pytest
 
 from ctypes import c_void_p
 
-from pam.internals import PAM_SYSTEM_ERR
-from pam.internals import PAM_SUCCESS
-from pam.internals import PAM_SESSION_ERR
-from pam.internals import PAM_AUTH_ERR
-from pam.internals import PAM_USER_UNKNOWN
-from pam.internals import PamConv
-from pam.internals import PamHandle
-# from pam.internals import PamMessage
-from pam.internals import PamResponse
-from pam.internals import PamAuthenticator
+from pam.__internals import PAM_SYSTEM_ERR
+from pam.__internals import PAM_SUCCESS
+from pam.__internals import PAM_SESSION_ERR
+from pam.__internals import PAM_AUTH_ERR
+from pam.__internals import PAM_USER_UNKNOWN
+from pam.__internals import PamConv
+from pam.__internals import PamHandle
+from pam.__internals import PamMessage
+from pam.__internals import PamResponse
+from pam.__internals import PamAuthenticator
 
 # In order to run some tests, we need a working user/pass combo
 # you can specify these on the command line
@@ -31,17 +31,17 @@ def test_PamHandle__void0():
     assert x.handle == c_void_p(0).value
 
 
-# def test_PamHandle__repr():
-#     x = PamHandle()
-#     assert '<PamHandle None>' == repr(x)
+def test_PamHandle__repr():
+    x = PamHandle()
+    assert '<PamHandle None>' == repr(x)
 
 
-# def test_PamMessage__repr():
-#     x = PamMessage()
-#     x.msg_style = 1
-#     x.msg = b'1'
-#     str(x)
-#     assert "<PamMessage 1 'b'1''>" == repr(x)
+def test_PamMessage__repr():
+    x = PamMessage()
+    x.msg_style = 1
+    x.msg = b'1'
+    str(x)
+    assert "<PamMessage 1 'b'1''>" == repr(x)
 
 
 def test_PamResponse__repr():
@@ -76,12 +76,18 @@ def test_PamAuthenticator__requires_service_no_nulls(pam_obj):
 
 # TEST_* require a valid account
 def test_PamAuthenticator__normal_success(pam_obj):
+    if not (TEST_USERNAME and  TEST_PASSWORD):
+        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
+
     rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD)
     assert PAM_SUCCESS == rv
 
 
 def test_PamAuthenticator__normal_password_failure(pam_obj):
-    rv = pam_obj.authenticate(TEST_USERNAME, '')
+    if not (TEST_USERNAME and  TEST_PASSWORD):
+        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
+
+    rv = pam_obj.authenticate(TEST_USERNAME, 'not-valid')
     assert PAM_AUTH_ERR == rv
 
 
@@ -92,7 +98,14 @@ def test_PamAuthenticator__normal_unknown_username(pam_obj):
 
 def test_PamAuthenticator__unset_DISPLAY(pam_obj):
     os.environ['DISPLAY'] = ''
+
     rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD)
+
+    # yes, this is intentional. this lets us run code coverage on the
+    # affected area even though we know the assert would have failed
+    if not (TEST_USERNAME and TEST_PASSWORD):
+        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
+
     assert PAM_SUCCESS == rv
 
 
@@ -113,6 +126,12 @@ def test_PamAuthenticator__env_requires_value_no_nulls(pam_obj):
 
 def test_PamAuthenticator__env_set(pam_obj):
     rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD, env={'key': b'value'})
+
+    # yes, this is intentional. this lets us run code coverage on the
+    # affected area even though we know the assert would have failed
+    if not (TEST_USERNAME and  TEST_PASSWORD):
+        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
+
     assert PAM_SUCCESS == rv
 
 
