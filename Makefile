@@ -51,7 +51,8 @@ pydeps:
 	  mock minimock faker responses
 
 test: pydeps deps venv lint
-	. venv/bin/activate; pytest --cov=pam tests -r w --capture=sys -vvv; \
+	. venv/bin/activate; \
+	pytest tests -r w --capture=sys -vvv --cov; \
 	coverage html
 
 tox:
