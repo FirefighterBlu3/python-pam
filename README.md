@@ -5,26 +5,26 @@ Python pam module supporting py3 (and py2)
 Commandline example:
 
 ```bash
-[david@Scott python-pam]$ python pam.py
+[david@Scott python-pam]$ python pam/pam.py
 Username: david
 Password:
-0 Success
-
-[david@Scott python-pam]$ python2 pam.py
-Username: david
-Password:
-0 Success
+Auth result: Success (0)
+Pam Environment List item: XDG_SEAT=seat0
+Pam Environment item: XDG_SEAT=seat0
+Missing Pam Environment item: asdf=None
+Open session: Success (0)
+Close session: Success (0)
 ```
 
 Inline examples:
 
 ```python
 [david@Scott python-pam]$ python
-Python 3.4.1 (default, May 19 2014, 17:23:49)
-[GCC 4.9.0 20140507 (prerelease)] on linux
+Python 3.9.7 (default, Oct 10 2021, 15:13:22)
+[GCC 11.1.0] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>> import pam
->>> p = pam.pam()
+>>> p = pam.authenticate()
 >>> p.authenticate('david', 'correctpassword')
 True
 >>> p.authenticate('david', 'badpassword')
