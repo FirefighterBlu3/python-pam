@@ -16,8 +16,8 @@ from pam.__internals import PamAuthenticator
 
 # In order to run some tests, we need a working user/pass combo
 # you can specify these on the command line
-TEST_USERNAME = os.getenv('USERNAME', '')
-TEST_PASSWORD = os.getenv('PASSWORD', '')
+TEST_USERNAME = os.getenv('TEST_USERNAME', '')
+TEST_PASSWORD = os.getenv('TEST_PASSWORD', '')
 
 
 @pytest.fixture
@@ -76,7 +76,7 @@ def test_PamAuthenticator__requires_service_no_nulls(pam_obj):
 
 # TEST_* require a valid account
 def test_PamAuthenticator__normal_success(pam_obj):
-    if not (TEST_USERNAME and  TEST_PASSWORD):
+    if not (TEST_USERNAME and TEST_PASSWORD):
         pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
 
     rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD)
@@ -84,7 +84,7 @@ def test_PamAuthenticator__normal_success(pam_obj):
 
 
 def test_PamAuthenticator__normal_password_failure(pam_obj):
-    if not (TEST_USERNAME and  TEST_PASSWORD):
+    if not (TEST_USERNAME and TEST_PASSWORD):
         pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
 
     rv = pam_obj.authenticate(TEST_USERNAME, 'not-valid')
@@ -93,7 +93,7 @@ def test_PamAuthenticator__normal_password_failure(pam_obj):
 
 def test_PamAuthenticator__normal_unknown_username(pam_obj):
     rv = pam_obj.authenticate('bad_user_name', '')
-    assert PAM_AUTH_ERR == rv
+    assert rv in (PAM_AUTH_ERR, PAM_USER_UNKNOWN)
 
 
 def test_PamAuthenticator__unset_DISPLAY(pam_obj):
@@ -129,7 +129,7 @@ def test_PamAuthenticator__env_set(pam_obj):
 
     # yes, this is intentional. this lets us run code coverage on the
     # affected area even though we know the assert would have failed
-    if not (TEST_USERNAME and  TEST_PASSWORD):
+    if not (TEST_USERNAME and TEST_PASSWORD):
         pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
 
     assert PAM_SUCCESS == rv
