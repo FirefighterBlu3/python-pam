@@ -1,3 +1,5 @@
+# Now owned and maintained by David Ford, <david.ford@blue-labs.org>
+#
 # (c) 2007 Chris AtLee <chris@atlee.ca>
 # Licensed under the MIT license:
 # http://www.opensource.org/licenses/mit-license.php
@@ -20,6 +22,8 @@
 '''
 PAM module for python
 
+This is a legacy file, it is not used. Here for example.
+
 Provides an authenticate function that will allow the caller to authenticate
 a user against the Pluggable Authentication Modules (PAM) on the system.
 
@@ -27,18 +31,7 @@ Implemented using ctypes, so no compilation is necessary.
 '''
 
 import six
-
-from . import internals
-
-__all__ = ['pam']
-
-
-def authenticate(*vargs, **dargs):
-    """
-    Compatibility function for older versions of python-pam.
-    """
-    return internals.PamAuthenticator().authenticate(*vargs, **dargs)
-
+import __internals
 
 if __name__ == "__main__":  # pragma: no cover
     import readline
@@ -50,44 +43,40 @@ if __name__ == "__main__":  # pragma: no cover
             readline.redisplay()
 
         readline.set_pre_input_hook(hook)
-        result = six.input(prompt)  # nosec (bandit; python2)
+        result = six.moves.input(prompt)  # nosec (bandit; python2)
 
         readline.set_pre_input_hook()
 
         return result
 
-    pam = internals.PamAuthenticator()
+    __pam = __internals.PamAuthenticator()
 
     username = input_with_prefill('Username: ', getpass.getuser())
 
     # enter a valid username and an invalid/valid password, to verify both
     # failure and success
-    result = pam.authenticate(username, getpass.getpass(),
-                              env={"XDG_SEAT": "seat0"},
-                              call_end=False)
-    print('Auth result: {} ({})'.format(pam.reason, pam.code))
+    result = __pam.authenticate(username, getpass.getpass(),
+                                env={"XDG_SEAT": "seat0"},
+                                call_end=False)
+    print('Auth result: {} ({})'.format(__pam.reason, __pam.code))
 
-    env_list = pam.getenvlist()
+    env_list = __pam.getenvlist()
     for key, value in env_list.items():
         print("Pam Environment List item: {}={}".format(key, value))
 
     key = "XDG_SEAT"
-    value = pam.getenv(key)
+    value = __pam.getenv(key)
     print("Pam Environment item: {}={}".format(key, value))
 
-    key = "asdf"
-    value = pam.getenv(key)
-    print("Missing Pam Environment item: {}={}".format(key, value))
+    if __pam.code == __internals.PAM_SUCCESS:
+        result = __pam.open_session()
+        print('Open session: {} ({})'.format(__pam.reason, __pam.code))
 
-    if pam.code == internals.PAM_SUCCESS:
-        result = pam.open_session()
-        print('Open session: {} ({})'.format(pam.reason, pam.code))
-
-        if pam.code == internals.PAM_SUCCESS:
-            result = pam.close_session()
-            print('Close session: {} ({})'.format(pam.reason, pam.code))
+        if __pam.code == __internals.PAM_SUCCESS:
+            result = __pam.close_session()
+            print('Close session: {} ({})'.format(__pam.reason, __pam.code))
 
         else:
-            pam.end()
+            __pam.end()
     else:
-        pam.end()
+        __pam.end()

@@ -1,30 +1,30 @@
 # python-pam
 
-Python pam module supporting py3 (and py2)
+Python pam module supporting py3 (and py2) for Linux type systems (!windows)
 
 Commandline example:
 
 ```bash
-[david@Scott python-pam]$ python pam.py
+[david@Scott python-pam]$ python pam/pam.py
 Username: david
 Password:
-0 Success
-
-[david@Scott python-pam]$ python2 pam.py
-Username: david
-Password:
-0 Success
+Auth result: Success (0)
+Pam Environment List item: XDG_SEAT=seat0
+Pam Environment item: XDG_SEAT=seat0
+Missing Pam Environment item: asdf=None
+Open session: Success (0)
+Close session: Success (0)
 ```
 
 Inline examples:
 
 ```python
 [david@Scott python-pam]$ python
-Python 3.4.1 (default, May 19 2014, 17:23:49)
-[GCC 4.9.0 20140507 (prerelease)] on linux
+Python 3.9.7 (default, Oct 10 2021, 15:13:22)
+[GCC 11.1.0] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>> import pam
->>> p = pam.pam()
+>>> p = pam.authenticate()
 >>> p.authenticate('david', 'correctpassword')
 True
 >>> p.authenticate('david', 'badpassword')
@@ -44,4 +44,29 @@ False
 >>> print('{} {}'.format(p.code, p.reason))
 7 Authentication failure
 >>>
+```
+
+## Authentication and privileges
+Please note, python-pam and *all* tools that do authentication follow two rules:
+
+* You have root (or privileged access): you can check any account's password for validity
+* You don't have root: you can only check the validity of the username running the tool
+
+If you need to authenticate multiple users, you must use an authentication stack that at some stage has privileged access. On Linux systems one example of doing this is using SSSD.
+
+Typical Linux installations check against `/etc/shadow` with `pam_unix.so` which will spawn `/usr/bin/unix_chkpwd` to verify the password. Both of these are intentionally written to meet the above two rules. You can test the functionality of `unix_chkpwd` in the following manner:
+
+Replace `good` with the correct password, replace `david` with your appropriate username.
+
+```
+~$ mkfifo /tmp/myfifo
+
+~$ (echo -ne 'good\0' > /tmp/myfifo & /usr/bin/unix_chkpwd david nullok < /tmp/myfifo ) ; echo $?
+0
+
+~$ (echo -ne 'bad\0' > /tmp/myfifo & /usr/bin/unix_chkpwd david nullok < /tmp/myfifo ) ; echo $?
+7
+
+~$ (echo -ne 'good\0' > /tmp/myfifo & /usr/bin/unix_chkpwd someotheruser nullok < /tmp/myfifo ) ; echo $?
+9
 ```

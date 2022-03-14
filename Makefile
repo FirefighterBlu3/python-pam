@@ -1,10 +1,10 @@
 VIRTUALENV = $(shell which virtualenv)
 PYTHONEXEC = python
 
-VERSION = `grep VERSION version.py | cut -d \' -f2`
+VERSION = `grep VERSION src/pam/version.py | cut -d \' -f2`
 
-bandit: pydeps
-	. venv/bin/activate; bandit -r pam/
+build: pydeps
+	python -m build
 
 clean:
 	rm -rf *.egg-info/
@@ -34,27 +34,25 @@ deps:
 	. venv/bin/activate; python -m pip install --upgrade -qr requirements.txt
 
 install: clean venv deps
-	. venv/bin/activate; python setup.py install
+	. venv/bin/activate; pip install --use-pep517 --progress-bar emoji
 
 inspectortiger: pydeps
-	. venv/bin/activate; inspectortiger pam/
+	. venv/bin/activate; inspectortiger src/pam/
 
 lint: pydeps
-	. venv/bin/activate; python -m flake8 pam/ --max-line-length=120
+	. venv/bin/activate; python -m flake8 src/pam/ --max-line-length=120
 
-preflight: bandit coverage test
+preflight: bandit test
 
 pydeps:
-	. venv/bin/activate; pip install --upgrade -q pip; \
-	  pip install --upgrade -q pip flake8 bandit \
-	  pyre-check coverage pytest pytest-mock pytest-cov pytest-runner \
-	  mock minimock faker responses
+	. venv/bin/activate; \
+	  pip install --upgrade -q pip && \
+	  pip install --upgrade -q pip build
 
-test: pydeps deps venv lint
-	. venv/bin/activate; pytest --cov=pam tests -r w --capture=sys -vvv; \
-	coverage html
+test: tox
 
 tox:
+	rm -fr .tox
 	. venv/bin/activate; tox
 
 venv:
