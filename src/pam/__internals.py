@@ -1,7 +1,7 @@
 import os
 import six
 import sys
-import ctypes
+from ctypes import cdll
 from ctypes import CFUNCTYPE
 from ctypes import CDLL
 from ctypes import POINTER
@@ -9,6 +9,7 @@ from ctypes import Structure
 from ctypes import byref
 from ctypes import cast
 from ctypes import sizeof
+from ctypes import py_object
 from ctypes import c_char
 from ctypes import c_char_p
 from ctypes import c_int
@@ -104,7 +105,7 @@ class PamMessage(Structure):
     _fields_ = [("msg_style", c_int), ("msg", c_char_p)]
 
     def __repr__(self):
-        return "<PamMessage %i '%s'>" % (self.msg_style, self.msg)
+        return "<PamMessage style: %i, content: %s >" % (self.msg_style, self.msg)
 
 
 class PamResponse(Structure):
@@ -112,7 +113,7 @@ class PamResponse(Structure):
     _fields_ = [("resp", c_char_p), ("resp_retcode", c_int)]
 
     def __repr__(self):
-        return "<PamResponse %i '%s'>" % (self.resp_retcode, self.resp)
+        return "<PamResponse code: %i, content: %s >" % (self.resp_retcode, self.resp)
 
 
 conv_func = CFUNCTYPE(c_int,
@@ -120,6 +121,49 @@ conv_func = CFUNCTYPE(c_int,
                       POINTER(POINTER(PamMessage)),
                       POINTER(POINTER(PamResponse)),
                       c_void_p)
+
+
+def my_conv(n_messages, messages, p_response, libc, msg_list: list, password: bytes, encoding: str):
+    """Simple conversation function that responds to any
+       prompt where the echo is off with the supplied password"""
+    # Create an array of n_messages response objects
+
+    calloc = libc.calloc
+    calloc.restype = c_void_p
+    calloc.argtypes = [c_size_t, c_size_t]
+
+    cpassword = c_char_p(password)
+
+    '''
+    PAM_PROMPT_ECHO_OFF = 1
+    PAM_PROMPT_ECHO_ON = 2
+    PAM_ERROR_MSG = 3
+    PAM_TEXT_INFO = 4
+    '''
+
+    addr = calloc(n_messages, sizeof(PamResponse))
+    response = cast(addr, POINTER(PamResponse))
+    p_response[0] = response
+
+    for i in range(n_messages):
+        message = messages[i].contents.msg
+        if sys.version_info >= (3,):  # pragma: no branch
+            message = message.decode(encoding)
+
+        msg_list.append(message)
+
+        if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:
+            if i == 0:
+                dst = calloc(len(password)+1, sizeof(c_char))
+                memmove(dst, cpassword, len(password))
+                response[i].resp = dst
+            else:
+                # void out the message
+                response[i].resp = None
+
+            response[i].resp_retcode = 0
+
+    return PAM_SUCCESS
 
 
 class PamConv(Structure):
@@ -136,8 +180,11 @@ class PamAuthenticator:
         # dlopen("", ...) which opens our own executable. since 'python' has
         # a libc dependency, this means libc symbols are already available
         # to us
-        libc = ctypes.cdll.LoadLibrary(None)
+
         # libc = CDLL(find_library("c"))
+        libc = cdll.LoadLibrary(None)
+        self.libc = libc
+
         libpam = CDLL(find_library("pam"))
         libpam_misc = CDLL(find_library("pam_misc"))
 
@@ -247,32 +294,14 @@ class PamAuthenticator:
         """
 
         @conv_func
-        def my_conv(n_messages, messages, p_response, app_data):
-            """Simple conversation function that responds to any
-               prompt where the echo is off with the supplied password"""
-            # Create an array of n_messages response objects
-            addr = self.calloc(n_messages, sizeof(PamResponse))
-            response = cast(addr, POINTER(PamResponse))
-            p_response[0] = response
+        def __conv(n_messages, messages, p_response, app_data):
+            pyob = cast(app_data, py_object).value
 
-            for i in range(n_messages):
-                message = messages[i].contents.msg
-                if sys.version_info >= (3,):  # pragma: no branch
-                    message = message.decode(encoding)
+            msg_list = pyob.get('msgs')
+            password = pyob.get('password')
+            encoding = pyob.get('encoding')
 
-                self.messages.append(message)
-
-                if messages[i].contents.msg_style == PAM_PROMPT_ECHO_OFF:  # pragma: no branch
-                    if i == 0:  # pragma: no branch
-                        dst = self.calloc(len(password)+1, sizeof(c_char))
-                        memmove(dst, cpassword, len(password))
-                        response[i].resp = dst
-                    else:  # pragma: no cover
-                        response[i].resp = None
-
-                    response[i].resp_retcode = 0
-
-            return PAM_SUCCESS
+            return my_conv(n_messages, messages, p_response, self.libc, msg_list, password, encoding)
 
         if isinstance(username, six.text_type):
             username = username.encode(encoding)
@@ -289,10 +318,10 @@ class PamAuthenticator:
 
         # do this up front so we can safely throw an exception if there's
         # anything wrong with it
-        cpassword = c_char_p(password)
+        app_data = {'msgs': self.messages, 'password': password, 'encoding': encoding}
+        conv = PamConv(__conv, c_void_p.from_buffer(py_object(app_data)))
 
         self.handle = PamHandle()
-        conv = PamConv(my_conv, 0)
         retval = self.pam_start(service, username, byref(conv),
                                 byref(self.handle))
 
