@@ -43,7 +43,7 @@ if __name__ == "__main__":  # pragma: no cover
             readline.redisplay()
 
         readline.set_pre_input_hook(hook)
-        result = six.input(prompt)  # nosec (bandit; python2)
+        result = six.moves.input(prompt)  # nosec (bandit; python2)
 
         readline.set_pre_input_hook()
 
@@ -67,10 +67,6 @@ if __name__ == "__main__":  # pragma: no cover
     key = "XDG_SEAT"
     value = __pam.getenv(key)
     print("Pam Environment item: {}={}".format(key, value))
-
-    key = "asdf"
-    value = __pam.getenv(key)
-    print("Missing Pam Environment item: {}={}".format(key, value))
 
     if __pam.code == __internals.PAM_SUCCESS:
         result = __pam.open_session()
