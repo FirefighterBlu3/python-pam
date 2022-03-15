@@ -17,6 +17,7 @@ from ctypes import c_size_t
 from ctypes import c_void_p
 from ctypes import memmove
 from ctypes.util import find_library
+from typing import Union
 
 PAM_ABORT = 26
 PAM_ACCT_EXPIRED = 13
@@ -173,7 +174,7 @@ class PamConv(Structure):
 
 class PamAuthenticator:
     code = 0
-    reason = None
+    reason = None  # type: Union[str, bytes, None]
 
     def __init__(self):
         # use a trick of dlopen(), this effectively becomes
@@ -252,23 +253,15 @@ class PamAuthenticator:
 
     def authenticate(
                 self,
-                username,
-                password,
-                service='login',
-                env=None,
-                call_end=True,
-                encoding='utf-8',
-                resetcreds=True,
-                print_failure_messages=False):
-        self.pam_authenticate.__annotations = {'username': str,
-                                               'password': str,
-                                               'service': str,
-                                               'env': dict,
-                                               'call_end': bool,
-                                               'encoding': str,
-                                               'resetcreds': bool,
-                                               'return': bool,
-                                               'print_failure_messages': bool}
+                username,                       # type: Union[str, bytes]
+                password,                       # type: Union[str, bytes]
+                service='login',                # type: Union[str, bytes]
+                env=None,                       # type: dict
+                call_end=True,                  # type: bool
+                encoding='utf-8',               # type: str
+                resetcreds=True,                # type: bool
+                print_failure_messages=False    # type: bool
+                ):                              # type: (...) -> bool
         """username and password authentication for the given service.
 
         Returns True for success, or False for failure.
@@ -281,15 +274,15 @@ class PamAuthenticator:
         necessary conversions using the supplied encoding.
 
         Args:
-          username: username to authenticate
-          password: password in plain text
-          service:  PAM service to authenticate against, defaults to 'login'
-          env:      Pam environment variables
-          call_end: call the pam_end() function after (default true)
-          print_failure_messages: Print messages on failure
+          username (str): username to authenticate
+          password (str): password in plain text
+          service (str):  PAM service to authenticate against, defaults to 'login'
+          env (dict):      Pam environment variables
+          call_end (bool): call the pam_end() function after (default true)
+          print_failure_messages (bool): Print messages on failure
 
         Returns:
-          success:  True
+          success:  PAM_SUCCESS
           failure:  False
         """
 
@@ -331,7 +324,7 @@ class PamAuthenticator:
             self.code = retval
             self.reason = ("pam_start() failed: %s" %
                            self.pam_strerror(self.handle, retval))
-            return retval
+            return False
 
         # set the TTY, required when pam_securetty is used and the username
         # root is used note: this is only needed WHEN the pam_securetty.so
@@ -353,10 +346,10 @@ class PamAuthenticator:
 
         # ctty can be invalid if no tty is being used
         if ctty:  # pragma: no branch
-            ctty = c_char_p(ctty.encode(encoding))
+            ctty_p = c_char_p(ctty.encode(encoding))
 
-            retval = self.pam_set_item(self.handle, PAM_TTY, ctty)
-            retval = self.pam_set_item(self.handle, PAM_XDISPLAY, ctty)
+            retval = self.pam_set_item(self.handle, PAM_TTY, ctty_p)
+            retval = self.pam_set_item(self.handle, PAM_XDISPLAY, ctty_p)
 
         # Set the environment variables if they were supplied
         if env:
@@ -387,7 +380,7 @@ class PamAuthenticator:
         self.reason = self.pam_strerror(self.handle, auth_success)
 
         if sys.version_info >= (3,):  # pragma: no branch
-            self.reason = self.reason.decode(encoding)
+            self.reason = self.reason.decode(encoding)  # type: ignore
 
         if call_end and hasattr(self, 'pam_end'):  # pragma: no branch
             self.pam_end(self.handle, auth_success)
@@ -396,7 +389,7 @@ class PamAuthenticator:
         if print_failure_messages and self.code != PAM_SUCCESS:  # pragma: no cover
             print(f"Failure: {self.reason}")
 
-        return auth_success
+        return auth_success == PAM_SUCCESS
 
     def end(self):
         """A direct call to pam_end()

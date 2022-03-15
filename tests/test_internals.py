@@ -85,7 +85,7 @@ def test_PamAuthenticator__normal_success(pam_obj):
         pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
 
     rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD)
-    assert PAM_SUCCESS == rv
+    assert True is rv
 
 
 def test_PamAuthenticator__normal_password_failure(pam_obj):
@@ -93,12 +93,14 @@ def test_PamAuthenticator__normal_password_failure(pam_obj):
         pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
 
     rv = pam_obj.authenticate(TEST_USERNAME, 'not-valid')
-    assert PAM_AUTH_ERR == rv
+    assert False is rv
+    assert PAM_AUTH_ERR == pam_obj.code
 
 
 def test_PamAuthenticator__normal_unknown_username(pam_obj):
     rv = pam_obj.authenticate('bad_user_name', '')
-    assert rv in (PAM_AUTH_ERR, PAM_USER_UNKNOWN)
+    assert False is rv
+    assert pam_obj.code in (PAM_AUTH_ERR, PAM_USER_UNKNOWN)
 
 
 def test_PamAuthenticator__unset_DISPLAY(pam_obj):
@@ -111,7 +113,7 @@ def test_PamAuthenticator__unset_DISPLAY(pam_obj):
     if not (TEST_USERNAME and TEST_PASSWORD):
         pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
 
-    assert PAM_SUCCESS == rv
+    assert True is rv
 
 
 def test_PamAuthenticator__env_requires_dict(pam_obj):
@@ -137,7 +139,7 @@ def test_PamAuthenticator__env_set(pam_obj):
     if not (TEST_USERNAME and TEST_PASSWORD):
         pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
 
-    assert PAM_SUCCESS == rv
+    assert True == rv
 
 
 def test_PamAuthenticator__putenv_incomplete_setup(pam_obj):
