@@ -69,6 +69,7 @@ PAM_USER_PROMPT = 9
 PAM_USER_UNKNOWN = 10
 PAM_XDISPLAY = 11
 
+
 __all__ = ('PAM_ABORT', 'PAM_ACCT_EXPIRED', 'PAM_AUTHINFO_UNAVAIL',
            'PAM_AUTHTOK_DISABLE_AGING', 'PAM_AUTHTOK_ERR',
            'PAM_AUTHTOK_EXPIRED', 'PAM_AUTHTOK_LOCK_BUSY',
@@ -127,7 +128,6 @@ def my_conv(n_messages, messages, p_response, libc, msg_list: list, password: by
     """Simple conversation function that responds to any
        prompt where the echo is off with the supplied password"""
     # Create an array of n_messages response objects
-
     calloc = libc.calloc
     calloc.restype = c_void_p
     calloc.argtypes = [c_size_t, c_size_t]
@@ -260,15 +260,15 @@ class PamAuthenticator:
                 encoding='utf-8',
                 resetcreds=True,
                 print_failure_messages=False):
-        self.pam_authenticate.__annotations = {'username': str,
-                                               'password': str,
-                                               'service': str,
-                                               'env': dict,
-                                               'call_end': bool,
-                                               'encoding': str,
-                                               'resetcreds': bool,
-                                               'return': bool,
-                                               'print_failure_messages': bool}
+        # self.pam_authenticate.__annotations = {'username': str,
+        #                                        'password': str,
+        #                                        'service': str,
+        #                                        'env': dict,
+        #                                        'call_end': bool,
+        #                                        'encoding': str,
+        #                                        'resetcreds': bool,
+        #                                        'return': bool,
+        #                                        'print_failure_messages': bool}
         """username and password authentication for the given service.
 
         Returns True for success, or False for failure.
