@@ -44,6 +44,16 @@ lint: pydeps
 
 preflight: bandit test
 
+publish-pypi-test: clean venv build
+	. venv/bin/activate; \
+	python3 -m pip install --upgrade twine && \
+	python3 -m twine upload --repository testpypi dist/*
+
+publish-pypi: clean venv build
+	. venv/bin/activate; \
+	python3 -m pip install --upgrade twine && \
+	python3 -m twine upload --repository pypi dist/*
+
 pydeps:
 	. venv/bin/activate; \
 	  pip install --upgrade -q pip && \
