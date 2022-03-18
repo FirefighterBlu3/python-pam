@@ -70,6 +70,7 @@ PAM_USER_PROMPT = 9
 PAM_USER_UNKNOWN = 10
 PAM_XDISPLAY = 11
 
+
 __all__ = ('PAM_ABORT', 'PAM_ACCT_EXPIRED', 'PAM_AUTHINFO_UNAVAIL',
            'PAM_AUTHTOK_DISABLE_AGING', 'PAM_AUTHTOK_ERR',
            'PAM_AUTHTOK_EXPIRED', 'PAM_AUTHTOK_LOCK_BUSY',
@@ -128,7 +129,6 @@ def my_conv(n_messages, messages, p_response, libc, msg_list: list, password: by
     """Simple conversation function that responds to any
        prompt where the echo is off with the supplied password"""
     # Create an array of n_messages response objects
-
     calloc = libc.calloc
     calloc.restype = c_void_p
     calloc.argtypes = [c_size_t, c_size_t]
@@ -345,7 +345,7 @@ class PamAuthenticator:
             ctty = os.ttyname(0)
 
         # ctty can be invalid if no tty is being used
-        if ctty:  # pragma: no branch
+        if ctty:  # pragma: no branch (we don't test a void tty yet)
             ctty_p = c_char_p(ctty.encode(encoding))
 
             retval = self.pam_set_item(self.handle, PAM_TTY, ctty_p)
@@ -367,19 +367,17 @@ class PamAuthenticator:
 
         auth_success = self.pam_authenticate(self.handle, 0)
 
-        # skip code coverage, this can only succeed when TEST_* is supplied
-        # in the environment. we ostensibly know it will work
         if auth_success == PAM_SUCCESS:
-            auth_success = self.pam_acct_mgmt(self.handle, 0)  # pragma: no cover
+            auth_success = self.pam_acct_mgmt(self.handle, 0)
 
         if auth_success == PAM_SUCCESS and resetcreds:
-            auth_success = self.pam_setcred(self.handle, PAM_REINITIALIZE_CRED)  # pragma: no cover
+            auth_success = self.pam_setcred(self.handle, PAM_REINITIALIZE_CRED)
 
         # store information to inform the caller why we failed
         self.code = auth_success
         self.reason = self.pam_strerror(self.handle, auth_success)
 
-        if sys.version_info >= (3,):  # pragma: no branch
+        if sys.version_info >= (3,):  # pragma: no branch (we don't test non-py3 versions)
             self.reason = self.reason.decode(encoding)  # type: ignore
 
         if call_end and hasattr(self, 'pam_end'):  # pragma: no branch
