@@ -1,5 +1,6 @@
 import os
 import pytest
+# from pytest import monkeypatch
 
 from ctypes import cdll
 from ctypes import c_void_p
@@ -19,15 +20,54 @@ from pam.__internals import PamResponse
 from pam.__internals import PamAuthenticator
 from pam.__internals import my_conv
 
-# In order to run some tests, we need a working user/pass combo
-# you can specify these on the command line
-TEST_USERNAME = os.getenv('TEST_USERNAME', '')
-TEST_PASSWORD = os.getenv('TEST_PASSWORD', '')
+
+class MockPam:
+    def __init__(self, og):
+        self.og = og
+        self.og_pam_start = og.pam_start
+        self.PA_authenticate = og.authenticate
+        self.username = None
+        self.password = None
+
+    def authenticate(self, *args, **kwargs):
+        if len(args) > 0:
+            self.username = args[0]
+        if len(args) > 1:
+            self.password = args[1]
+        self.service = kwargs.get('service')
+        return self.PA_authenticate(*args, **kwargs)
+
+    def pam_start(self, service, username, conv, handle):
+        rv = self.og_pam_start(service, username, conv, handle)
+        return rv
+
+    def pam_authenticate(self, handle, flags):
+        if isinstance(self.username, str):
+            self.username = self.username.encode()
+        if isinstance(self.password, str):
+            self.password = self.password.encode()
+
+        if self.username == b'good_username' and self.password == b'good_password':
+            return PAM_SUCCESS
+
+        if self.username == b'unknown_username':
+            return PAM_USER_UNKNOWN
+
+        return PAM_AUTH_ERR
+
+    def pam_acct_mgmt(self, handle, flags):
+        # we don't test anything here (yet)
+        return PAM_SUCCESS
 
 
 @pytest.fixture
-def pam_obj(request):
+def pam_obj(request, monkeypatch):
     obj = PamAuthenticator()
+    MP = MockPam(obj)
+    monkeypatch.setattr(obj, 'authenticate', MP.authenticate)
+    monkeypatch.setattr(obj, 'pam_start', MP.pam_start)
+    monkeypatch.setattr(obj, 'pam_authenticate', MP.pam_authenticate)
+    monkeypatch.setattr(obj, 'pam_acct_mgmt', MP.pam_acct_mgmt)
     yield obj
 
 
@@ -81,65 +121,49 @@ def test_PamAuthenticator__requires_service_no_nulls(pam_obj):
 
 # TEST_* require a valid account
 def test_PamAuthenticator__normal_success(pam_obj):
-    if not (TEST_USERNAME and TEST_PASSWORD):
-        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
-
-    rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD)
+    rv = pam_obj.authenticate('good_username', 'good_password')
     assert True is rv
 
 
 def test_PamAuthenticator__normal_password_failure(pam_obj):
-    if not (TEST_USERNAME and TEST_PASSWORD):
-        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
-
-    rv = pam_obj.authenticate(TEST_USERNAME, 'not-valid')
+    rv = pam_obj.authenticate('good_username', 'bad_password')
     assert False is rv
     assert PAM_AUTH_ERR == pam_obj.code
 
 
 def test_PamAuthenticator__normal_unknown_username(pam_obj):
-    rv = pam_obj.authenticate('bad_user_name', '')
+    rv = pam_obj.authenticate('unknown_username', '')
     assert False is rv
-    assert pam_obj.code in (PAM_AUTH_ERR, PAM_USER_UNKNOWN)
+    assert PAM_USER_UNKNOWN == pam_obj.code
 
 
 def test_PamAuthenticator__unset_DISPLAY(pam_obj):
     os.environ['DISPLAY'] = ''
 
-    rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD)
-
-    # yes, this is intentional. this lets us run code coverage on the
-    # affected area even though we know the assert would have failed
-    if not (TEST_USERNAME and TEST_PASSWORD):
-        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
-
+    rv = pam_obj.authenticate('good_username', 'good_password')
     assert True is rv
+    assert PAM_SUCCESS == pam_obj.code
 
 
 def test_PamAuthenticator__env_requires_dict(pam_obj):
     with pytest.raises(TypeError):
-        pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD, env='value')
+        pam_obj.authenticate('good_username', 'good_password', env='value')
 
 
 def test_PamAuthenticator__env_requires_key_no_nulls(pam_obj):
     with pytest.raises(ValueError):
-        pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD, env={b'\x00invalid_key': b'value'})
+        pam_obj.authenticate('good_username', 'good_password', env={b'\x00invalid_key': b'value'})
 
 
 def test_PamAuthenticator__env_requires_value_no_nulls(pam_obj):
     with pytest.raises(ValueError):
-        pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD, env={b'key': b'\x00invalid_value'})
+        pam_obj.authenticate('good_username', 'good_password', env={b'key': b'\x00invalid_value'})
 
 
 def test_PamAuthenticator__env_set(pam_obj):
-    rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD, env={'key': b'value'})
-
-    # yes, this is intentional. this lets us run code coverage on the
-    # affected area even though we know the assert would have failed
-    if not (TEST_USERNAME and TEST_PASSWORD):
-        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
-
-    assert True == rv
+    rv = pam_obj.authenticate('good_username', 'good_password', env={'key': b'value'})
+    assert True is rv
+    assert PAM_SUCCESS == pam_obj.code
 
 
 def test_PamAuthenticator__putenv_incomplete_setup(pam_obj):
