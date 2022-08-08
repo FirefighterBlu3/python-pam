@@ -16,6 +16,11 @@ from ctypes import c_size_t
 from ctypes import c_void_p
 from ctypes import memmove
 from ctypes.util import find_library
+try:
+    from typing import Union
+except ImportError:
+    # No typing on Python 2
+    pass
 
 PAM_ABORT = 26
 PAM_ACCT_EXPIRED = 13
@@ -92,11 +97,11 @@ class PamHandle(Structure):
     _fields_ = [("handle", c_void_p)]
 
     def __init__(self):
-        super().__init__()
+        super(PamHandle, self).__init__()
         self.handle = 0
 
     def __repr__(self):
-        return f"<PamHandle {self.handle}>"
+        return "<PamHandle {}>".format(self.handle)
 
 
 class PamMessage(Structure):
@@ -365,7 +370,7 @@ class PamAuthenticator:
             self.handle = None
 
         if print_failure_messages and self.code != PAM_SUCCESS:
-            print(f"Failure: {self.reason}")
+            print("Failure: {}".format(self.reason))
 
         return auth_success
 
