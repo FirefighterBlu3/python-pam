@@ -116,14 +116,22 @@ __all__ = [
 __PA = None
 
 
-def authenticate(*args, **kvargs):
+def authenticate(username,
+                 password,
+                 service='login',
+                 env=None,
+                 call_end=True,
+                 encoding='utf-8',
+                 resetcreds=True,
+                 print_failure_messages=False):
     global __PA
 
     if __PA is None:  # pragma: no branch
         __PA = PamAuthenticator()
 
-    return __PA.authenticate(*args, **kvargs)
+    return __PA.authenticate(username, password, service, env, call_end, encoding, resetcreds, print_failure_messages)
 
 
 # legacy implementations used pam.pam()
-pam = authenticate
+pam = PamAuthenticator
+authenticate.__doc__ = PamAuthenticator.authenticate.__doc__

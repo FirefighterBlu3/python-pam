@@ -1,28 +1,73 @@
 import os
 import pytest
+# from pytest import monkeypatch
 
+from ctypes import cdll
 from ctypes import c_void_p
+from ctypes import pointer
 
 from pam.__internals import PAM_SYSTEM_ERR
 from pam.__internals import PAM_SUCCESS
 from pam.__internals import PAM_SESSION_ERR
 from pam.__internals import PAM_AUTH_ERR
 from pam.__internals import PAM_USER_UNKNOWN
+from pam.__internals import PAM_PROMPT_ECHO_OFF
+from pam.__internals import PAM_PROMPT_ECHO_ON
 from pam.__internals import PamConv
 from pam.__internals import PamHandle
 from pam.__internals import PamMessage
 from pam.__internals import PamResponse
 from pam.__internals import PamAuthenticator
+from pam.__internals import my_conv
 
-# In order to run some tests, we need a working user/pass combo
-# you can specify these on the command line
-TEST_USERNAME = os.getenv('USERNAME', '')
-TEST_PASSWORD = os.getenv('PASSWORD', '')
+
+class MockPam:
+    def __init__(self, og):
+        self.og = og
+        self.og_pam_start = og.pam_start
+        self.PA_authenticate = og.authenticate
+        self.username = None
+        self.password = None
+
+    def authenticate(self, *args, **kwargs):
+        if len(args) > 0:
+            self.username = args[0]
+        if len(args) > 1:
+            self.password = args[1]
+        self.service = kwargs.get('service')
+        return self.PA_authenticate(*args, **kwargs)
+
+    def pam_start(self, service, username, conv, handle):
+        rv = self.og_pam_start(service, username, conv, handle)
+        return rv
+
+    def pam_authenticate(self, handle, flags):
+        if isinstance(self.username, str):
+            self.username = self.username.encode()
+        if isinstance(self.password, str):
+            self.password = self.password.encode()
+
+        if self.username == b'good_username' and self.password == b'good_password':
+            return PAM_SUCCESS
+
+        if self.username == b'unknown_username':
+            return PAM_USER_UNKNOWN
+
+        return PAM_AUTH_ERR
+
+    def pam_acct_mgmt(self, handle, flags):
+        # we don't test anything here (yet)
+        return PAM_SUCCESS
 
 
 @pytest.fixture
-def pam_obj(request):
+def pam_obj(request, monkeypatch):
     obj = PamAuthenticator()
+    MP = MockPam(obj)
+    monkeypatch.setattr(obj, 'authenticate', MP.authenticate)
+    monkeypatch.setattr(obj, 'pam_start', MP.pam_start)
+    monkeypatch.setattr(obj, 'pam_authenticate', MP.pam_authenticate)
+    monkeypatch.setattr(obj, 'pam_acct_mgmt', MP.pam_acct_mgmt)
     yield obj
 
 
@@ -41,12 +86,12 @@ def test_PamMessage__repr():
     x.msg_style = 1
     x.msg = b'1'
     str(x)
-    assert "<PamMessage 1 'b'1''>" == repr(x)
+    assert "<PamMessage style: 1, content: b'1' >" == repr(x)
 
 
 def test_PamResponse__repr():
     x = PamResponse()
-    assert "<PamResponse 0 'None'>" == repr(x)
+    assert "<PamResponse code: 0, content: None >" == repr(x)
 
 
 def test_PamAuthenticator__setup():
@@ -76,63 +121,49 @@ def test_PamAuthenticator__requires_service_no_nulls(pam_obj):
 
 # TEST_* require a valid account
 def test_PamAuthenticator__normal_success(pam_obj):
-    if not (TEST_USERNAME and  TEST_PASSWORD):
-        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
-
-    rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD)
-    assert PAM_SUCCESS == rv
+    rv = pam_obj.authenticate('good_username', 'good_password')
+    assert True is rv
 
 
 def test_PamAuthenticator__normal_password_failure(pam_obj):
-    if not (TEST_USERNAME and  TEST_PASSWORD):
-        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
-
-    rv = pam_obj.authenticate(TEST_USERNAME, 'not-valid')
-    assert PAM_AUTH_ERR == rv
+    rv = pam_obj.authenticate('good_username', 'bad_password')
+    assert False is rv
+    assert PAM_AUTH_ERR == pam_obj.code
 
 
 def test_PamAuthenticator__normal_unknown_username(pam_obj):
-    rv = pam_obj.authenticate('bad_user_name', '')
-    assert PAM_AUTH_ERR == rv
+    rv = pam_obj.authenticate('unknown_username', '')
+    assert False is rv
+    assert PAM_USER_UNKNOWN == pam_obj.code
 
 
 def test_PamAuthenticator__unset_DISPLAY(pam_obj):
     os.environ['DISPLAY'] = ''
 
-    rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD)
-
-    # yes, this is intentional. this lets us run code coverage on the
-    # affected area even though we know the assert would have failed
-    if not (TEST_USERNAME and TEST_PASSWORD):
-        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
-
-    assert PAM_SUCCESS == rv
+    rv = pam_obj.authenticate('good_username', 'good_password')
+    assert True is rv
+    assert PAM_SUCCESS == pam_obj.code
 
 
 def test_PamAuthenticator__env_requires_dict(pam_obj):
     with pytest.raises(TypeError):
-        pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD, env='value')
+        pam_obj.authenticate('good_username', 'good_password', env='value')
 
 
 def test_PamAuthenticator__env_requires_key_no_nulls(pam_obj):
     with pytest.raises(ValueError):
-        pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD, env={b'\x00invalid_key': b'value'})
+        pam_obj.authenticate('good_username', 'good_password', env={b'\x00invalid_key': b'value'})
 
 
 def test_PamAuthenticator__env_requires_value_no_nulls(pam_obj):
     with pytest.raises(ValueError):
-        pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD, env={b'key': b'\x00invalid_value'})
+        pam_obj.authenticate('good_username', 'good_password', env={b'key': b'\x00invalid_value'})
 
 
 def test_PamAuthenticator__env_set(pam_obj):
-    rv = pam_obj.authenticate(TEST_USERNAME, TEST_PASSWORD, env={'key': b'value'})
-
-    # yes, this is intentional. this lets us run code coverage on the
-    # affected area even though we know the assert would have failed
-    if not (TEST_USERNAME and  TEST_PASSWORD):
-        pytest.skip("test requires valid TEST_USERNAME and TEST_PASSWORD set in environment")
-
-    assert PAM_SUCCESS == rv
+    rv = pam_obj.authenticate('good_username', 'good_password', env={'key': b'value'})
+    assert True is rv
+    assert PAM_SUCCESS == pam_obj.code
 
 
 def test_PamAuthenticator__putenv_incomplete_setup(pam_obj):
@@ -284,3 +315,143 @@ def test_PamAuthenticator__close_session_unauthenticated(pam_obj):
     pam_obj.pam_start(b'', b'', pam_conv, pam_obj.handle)
     rv = pam_obj.close_session()
     assert PAM_SESSION_ERR == rv
+
+
+def test_PamAuthenticator__conversation_callback_prompt_echo_off(pam_obj):
+    '''Verify that the password is stuffed into the pp_response structure and the
+    response code is set to zero
+    '''
+    n_messages = 1
+
+    messages = PamMessage(PAM_PROMPT_ECHO_OFF, b'Password: ')
+    pp_messages = pointer(pointer(messages))
+
+    response = PamResponse(b'overwrite', -1)
+    pp_response = pointer(pointer(response))
+
+    encoding = 'utf-8'
+    password = b'blank'
+    msg_list = []
+
+    libc = cdll.LoadLibrary(None)
+
+    rv = my_conv(n_messages,
+                 pp_messages,
+                 pp_response,
+                 libc,
+                 msg_list,
+                 password,
+                 encoding)
+
+    assert b'blank' == pp_response.contents.contents.resp
+    assert 0 == pp_response.contents.contents.resp_retcode
+    assert PAM_SUCCESS == rv
+
+
+def test_PamAuthenticator__conversation_callback_prompt_echo_on(pam_obj):
+    '''Verify that the stuffed PamResponse "overwrite" is copied into the output
+    and the resp_retcode is set to zero
+    '''
+    n_messages = 1
+
+    messages = PamMessage(PAM_PROMPT_ECHO_ON, b'Password: ')
+    pp_messages = pointer(pointer(messages))
+
+    response = PamResponse(b'overwrite', -1)
+    pp_response = pointer(pointer(response))
+
+    encoding = 'utf-8'
+    password = b'blank'
+    msg_list = []
+
+    libc = cdll.LoadLibrary(None)
+
+    rv = my_conv(n_messages,
+                 pp_messages,
+                 pp_response,
+                 libc,
+                 msg_list,
+                 password,
+                 encoding)
+
+    assert None is pp_response.contents.contents.resp
+    assert 0 == pp_response.contents.contents.resp_retcode
+    assert PAM_SUCCESS == rv
+
+
+def test_PamAuthenticator__conversation_callback_multimessage_OFF_ON(pam_obj):
+    '''Verify that the stuffed PamResponse "overwrite" is copied into the output
+    and the resp_retcode is set to zero
+    '''
+    n_messages = 2
+
+    msg1 = PamMessage(PAM_PROMPT_ECHO_OFF, b'overwrite with PAM_PROMPT_ECHO_OFF')
+    msg2 = PamMessage(PAM_PROMPT_ECHO_ON, b'overwrite with PAM_PROMPT_ECHO_ON')
+
+    ptr1 = pointer(msg1)
+    ptr2 = pointer(msg2)
+
+    ptrs = pointer(ptr1)
+    ptrs[1] = ptr2
+
+    pp_messages = pointer(ptrs[0])
+
+    response = PamResponse(b'overwrite', -1)
+    pp_response = pointer(pointer(response))
+
+    encoding = 'utf-8'
+    password = b'blank'
+    msg_list = []
+
+    libc = cdll.LoadLibrary(None)
+
+    rv = my_conv(n_messages,
+                 pp_messages,
+                 pp_response,
+                 libc,
+                 msg_list,
+                 password,
+                 encoding)
+
+    assert b'blank' == pp_response.contents.contents.resp
+    assert 0 == pp_response.contents.contents.resp_retcode
+    assert PAM_SUCCESS == rv
+
+
+def test_PamAuthenticator__conversation_callback_multimessage_ON_OFF(pam_obj):
+    '''Verify that the stuffed PamResponse "overwrite" is copied into the output
+    and the resp_retcode is set to zero
+    '''
+    n_messages = 2
+
+    msg1 = PamMessage(PAM_PROMPT_ECHO_ON, b'overwrite with PAM_PROMPT_ECHO_ON')
+    msg2 = PamMessage(PAM_PROMPT_ECHO_OFF, b'overwrite with PAM_PROMPT_ECHO_OFF')
+
+    ptr1 = pointer(msg1)
+    ptr2 = pointer(msg2)
+
+    ptrs = pointer(ptr1)
+    ptrs[1] = ptr2
+
+    pp_messages = pointer(ptrs[0])
+
+    response = PamResponse(b'overwrite', -1)
+    pp_response = pointer(pointer(response))
+
+    encoding = 'utf-8'
+    password = b'blank'
+    msg_list = []
+
+    libc = cdll.LoadLibrary(None)
+
+    rv = my_conv(n_messages,
+                 pp_messages,
+                 pp_response,
+                 libc,
+                 msg_list,
+                 password,
+                 encoding)
+
+    assert None is pp_response.contents.contents.resp
+    assert 0 == pp_response.contents.contents.resp_retcode
+    assert PAM_SUCCESS == rv
