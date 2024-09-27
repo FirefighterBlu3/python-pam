@@ -311,11 +311,11 @@ class PamAuthenticator:
 
         # do this up front so we can safely throw an exception if there's
         # anything wrong with it
-        app_data = {'msgs': self.messages, 'password': password, 'encoding': encoding}
-        conv = PamConv(__conv, c_void_p.from_buffer(py_object(app_data)))
+        self.app_data = {'msgs': self.messages, 'password': password, 'encoding': encoding}
+        self.conv = PamConv(__conv, c_void_p.from_buffer(py_object(self.app_data)))
 
         self.handle = PamHandle()
-        retval = self.pam_start(service, username, byref(conv),
+        retval = self.pam_start(service, username, byref(self.conv),
                                 byref(self.handle))
 
         if retval != PAM_SUCCESS:  # pragma: no cover
