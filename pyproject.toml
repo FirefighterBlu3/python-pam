@@ -2,7 +2,6 @@
 requires = [
     'setuptools>=44',
     'wheel>=0.30.0',
-    'six',
 ]
 build-backend = 'setuptools.build_meta'
 
@@ -32,7 +31,6 @@ deps =
     bandit
     flake8
     mypy
-    types-six
     coverage
     pytest-cov
     pytest

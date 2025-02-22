@@ -1,5 +1,4 @@
 import os
-import six
 import sys
 from ctypes import cdll
 from ctypes import CFUNCTYPE
@@ -296,11 +295,11 @@ class PamAuthenticator:
 
             return my_conv(n_messages, messages, p_response, self.libc, msg_list, password, encoding)
 
-        if isinstance(username, six.text_type):
+        if isinstance(username, str):
             username = username.encode(encoding)
-        if isinstance(password, six.text_type):
+        if isinstance(password, str):
             password = password.encode(encoding)
-        if isinstance(service, six.text_type):
+        if isinstance(service, str):
             service = service.encode(encoding)
 
         if b'\x00' in username or b'\x00' in password or b'\x00' in service:
@@ -482,8 +481,7 @@ class PamAuthenticator:
             return PAM_SYSTEM_ERR
 
         #  can't happen unless someone is using internals directly
-        if sys.version_info >= (3, ):  # pragma: no branch
-            if isinstance(key, six.text_type):  # pragma: no branch
+        if isinstance(key, str):  # pragma: no branch
                 key = key.encode(encoding)
 
         value = self.pam_getenv(self.handle, key)
