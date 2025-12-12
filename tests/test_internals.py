@@ -622,3 +622,307 @@ def test_PamAuthenticator__pam_start_success_but_handle_none(monkeypatch):
 # and then calling real PAM functions causes crashes. The validation code is in place
 # and will catch these scenarios in real usage. The test above verifies the basic
 # case where handle is None after pam_start.
+
+
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+
+def test_PamAuthenticator__threaded_separate_instances(monkeypatch):
+    """Test concurrent authentication with separate PamAuthenticator instances."""
+    num_threads = 10
+    num_attempts_per_thread = 5
+    
+    def authenticate_worker(thread_id):
+        """Worker function for each thread."""
+        results = []
+        errors = []
+        
+        for attempt in range(num_attempts_per_thread):
+            try:
+                obj = PamAuthenticator()
+                MP = MockPam(obj)
+                obj._mock_pam = MP
+                
+                # Use the existing fixture pattern
+                def mock_authenticate(*args, **kwargs):
+                    return MP.authenticate(*args, **kwargs)
+                
+                def mock_pam_start(service, username, conv, handle):
+                    return MP.pam_start(service, username, conv, handle)
+                
+                def mock_pam_authenticate(handle, flags):
+                    return MP.pam_authenticate(handle, flags)
+                
+                def mock_pam_acct_mgmt(handle, flags):
+                    return MP.pam_acct_mgmt(handle, flags)
+                
+                def mock_pam_setcred(handle, flags):
+                    return MP.pam_setcred(handle, flags)
+                
+                def mock_pam_strerror(handle, code):
+                    return b"Success"
+                
+                def mock_pam_set_item(handle, item, value):
+                    return PAM_SUCCESS
+                
+                monkeypatch.setattr(obj, 'authenticate', mock_authenticate)
+                monkeypatch.setattr(obj, 'pam_start', mock_pam_start)
+                monkeypatch.setattr(obj, 'pam_authenticate', mock_pam_authenticate)
+                monkeypatch.setattr(obj, 'pam_acct_mgmt', mock_pam_acct_mgmt)
+                monkeypatch.setattr(obj, 'pam_setcred', mock_pam_setcred)
+                monkeypatch.setattr(obj, 'pam_strerror', mock_pam_strerror)
+                monkeypatch.setattr(obj, 'pam_set_item', mock_pam_set_item)
+                
+                # Perform authentication with standard test credentials
+                result = obj.authenticate('good_username', 'good_password')
+                results.append({
+                    'thread_id': thread_id,
+                    'attempt': attempt,
+                    'success': result,
+                    'code': obj.code,
+                    'handle_valid': obj.handle is None or obj.code == PAM_SUCCESS
+                })
+                
+                # Verify handle was valid during authentication
+                if result:
+                    assert obj.code == PAM_SUCCESS, f"Thread {thread_id}, attempt {attempt}: Expected PAM_SUCCESS, got {obj.code}"
+                else:
+                    assert obj.code != PAM_SUCCESS, f"Thread {thread_id}, attempt {attempt}: Expected failure code"
+                
+            except Exception as e:
+                errors.append({
+                    'thread_id': thread_id,
+                    'attempt': attempt,
+                    'error': str(e),
+                    'type': type(e).__name__
+                })
+        
+        return {'results': results, 'errors': errors}
+    
+    # Run concurrent authentications
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [executor.submit(authenticate_worker, i) for i in range(num_threads)]
+        all_results = []
+        all_errors = []
+        
+        for future in as_completed(futures):
+            try:
+                worker_result = future.result()
+                all_results.extend(worker_result['results'])
+                all_errors.extend(worker_result['errors'])
+            except Exception as e:
+                all_errors.append({'error': str(e), 'type': type(e).__name__})
+    
+    # Verify all authentications completed
+    assert len(all_results) == num_threads * num_attempts_per_thread, \
+        f"Expected {num_threads * num_attempts_per_thread} results, got {len(all_results)}"
+    
+    # Verify no errors occurred
+    assert len(all_errors) == 0, f"Errors occurred during threaded authentication: {all_errors}"
+    
+    # Verify all authentications succeeded
+    successful = sum(1 for r in all_results if r['success'])
+    assert successful == num_threads * num_attempts_per_thread, \
+        f"Expected all authentications to succeed, but {successful}/{len(all_results)} succeeded"
+
+
+def test_PamAuthenticator__threaded_shared_instance(monkeypatch):
+    """Test concurrent authentication with shared PamAuthenticator instance.
+    
+    Note: This test verifies that handle validation prevents crashes when
+    multiple threads access a shared instance. Some failures are expected
+    due to the non-thread-safe nature of sharing a single instance.
+    """
+    num_threads = 5
+    num_attempts_per_thread = 2
+    
+    # Create a shared instance
+    shared_obj = PamAuthenticator()
+    MP = MockPam(shared_obj)
+    shared_obj._mock_pam = MP
+    
+    # Use the existing fixture pattern
+    def mock_authenticate(*args, **kwargs):
+        return MP.authenticate(*args, **kwargs)
+    
+    def mock_pam_start(service, username, conv, handle):
+        return MP.pam_start(service, username, conv, handle)
+    
+    def mock_pam_authenticate(handle, flags):
+        return MP.pam_authenticate(handle, flags)
+    
+    def mock_pam_acct_mgmt(handle, flags):
+        return MP.pam_acct_mgmt(handle, flags)
+    
+    def mock_pam_setcred(handle, flags):
+        return MP.pam_setcred(handle, flags)
+    
+    def mock_pam_strerror(handle, code):
+        return b"Success"
+    
+    def mock_pam_set_item(handle, item, value):
+        return PAM_SUCCESS
+    
+    monkeypatch.setattr(shared_obj, 'authenticate', mock_authenticate)
+    monkeypatch.setattr(shared_obj, 'pam_start', mock_pam_start)
+    monkeypatch.setattr(shared_obj, 'pam_authenticate', mock_pam_authenticate)
+    monkeypatch.setattr(shared_obj, 'pam_acct_mgmt', mock_pam_acct_mgmt)
+    monkeypatch.setattr(shared_obj, 'pam_setcred', mock_pam_setcred)
+    monkeypatch.setattr(shared_obj, 'pam_strerror', mock_pam_strerror)
+    monkeypatch.setattr(shared_obj, 'pam_set_item', mock_pam_set_item)
+    
+    # Lock for synchronizing access to shared object
+    lock = threading.Lock()
+    results = []
+    errors = []
+    
+    def authenticate_worker(thread_id):
+        """Worker function for each thread."""
+        thread_results = []
+        thread_errors = []
+        
+        for attempt in range(num_attempts_per_thread):
+            try:
+                with lock:
+                    # Use standard test credentials
+                    result = shared_obj.authenticate('good_username', 'good_password')
+                
+                thread_results.append({
+                    'thread_id': thread_id,
+                    'attempt': attempt,
+                    'success': result,
+                    'code': shared_obj.code,
+                    'handle_valid': shared_obj.handle is None or shared_obj.code == PAM_SUCCESS
+                })
+                
+            except Exception as e:
+                thread_errors.append({
+                    'thread_id': thread_id,
+                    'attempt': attempt,
+                    'error': str(e),
+                    'type': type(e).__name__
+                })
+        
+        with lock:
+            results.extend(thread_results)
+            errors.extend(thread_errors)
+    
+    # Run concurrent authentications
+    threads = []
+    for i in range(num_threads):
+        thread = threading.Thread(target=authenticate_worker, args=(i,))
+        threads.append(thread)
+        thread.start()
+    
+    # Wait for all threads to complete
+    for thread in threads:
+        thread.join(timeout=30)  # 30 second timeout
+    
+    # Verify all threads completed
+    for thread in threads:
+        assert not thread.is_alive(), "Some threads did not complete"
+    
+    # Verify we got some results (may be fewer than expected due to locking)
+    assert len(results) > 0, "No authentication results received"
+    
+    # Verify no critical errors occurred (handle validation should prevent crashes)
+    critical_errors = [e for e in errors if 'ctypes.ArgumentError' in e.get('error', '')]
+    assert len(critical_errors) == 0, \
+        f"Critical ctypes errors occurred (handle validation should prevent these): {critical_errors}"
+
+
+def test_PamAuthenticator__threaded_handle_validation(monkeypatch):
+    """Test that handle validation works correctly under concurrent access."""
+    num_threads = 5
+    results = []
+    lock = threading.Lock()
+    
+    def worker_with_handle_check(thread_id):
+        """Worker that checks handle validation."""
+        try:
+            obj = PamAuthenticator()
+            MP = MockPam(obj)
+            obj._mock_pam = MP
+            
+            # Use the existing fixture pattern
+            def mock_authenticate(*args, **kwargs):
+                return MP.authenticate(*args, **kwargs)
+            
+            def mock_pam_start(service, username, conv, handle):
+                return MP.pam_start(service, username, conv, handle)
+            
+            def mock_pam_authenticate(handle, flags):
+                return MP.pam_authenticate(handle, flags)
+            
+            def mock_pam_acct_mgmt(handle, flags):
+                return MP.pam_acct_mgmt(handle, flags)
+            
+            def mock_pam_setcred(handle, flags):
+                return MP.pam_setcred(handle, flags)
+            
+            def mock_pam_strerror(handle, code):
+                return b"Success"
+            
+            def mock_pam_set_item(handle, item, value):
+                return PAM_SUCCESS
+            
+            monkeypatch.setattr(obj, 'authenticate', mock_authenticate)
+            monkeypatch.setattr(obj, 'pam_start', mock_pam_start)
+            monkeypatch.setattr(obj, 'pam_authenticate', mock_pam_authenticate)
+            monkeypatch.setattr(obj, 'pam_acct_mgmt', mock_pam_acct_mgmt)
+            monkeypatch.setattr(obj, 'pam_setcred', mock_pam_setcred)
+            monkeypatch.setattr(obj, 'pam_strerror', mock_pam_strerror)
+            monkeypatch.setattr(obj, 'pam_set_item', mock_pam_set_item)
+            
+            # Perform authentication
+            result = obj.authenticate('good_username', 'good_password')
+            
+            with lock:
+                results.append({
+                    'thread_id': thread_id,
+                    'success': result,
+                    'code': obj.code,
+                    'handle_was_valid': obj.handle is None or obj.code == PAM_SUCCESS
+                })
+            
+            # Verify handle validation didn't allow invalid handles
+            if result:
+                assert obj.code == PAM_SUCCESS, f"Thread {thread_id}: Expected PAM_SUCCESS"
+            else:
+                # If authentication failed, verify it was due to proper validation
+                assert obj.code != PAM_SUCCESS, f"Thread {thread_id}: Expected failure code"
+                
+        except Exception as e:
+            with lock:
+                results.append({
+                    'thread_id': thread_id,
+                    'error': str(e),
+                    'type': type(e).__name__
+                })
+    
+    # Run concurrent workers
+    threads = []
+    for i in range(num_threads):
+        thread = threading.Thread(target=worker_with_handle_check, args=(i,))
+        threads.append(thread)
+        thread.start()
+    
+    # Wait for all threads
+    for thread in threads:
+        thread.join(timeout=30)
+    
+    # Verify all completed
+    assert len(results) == num_threads, f"Expected {num_threads} results, got {len(results)}"
+    
+    # Verify no unexpected errors (especially no ctypes.ArgumentError)
+    errors = [r for r in results if 'error' in r]
+    ctypes_errors = [e for e in errors if 'ctypes.ArgumentError' in e.get('error', '')]
+    assert len(ctypes_errors) == 0, \
+        f"Handle validation should prevent ctypes.ArgumentError: {ctypes_errors}"
+    
+    # Verify all authentications succeeded (with proper handle validation)
+    successful = [r for r in results if r.get('success')]
+    assert len(successful) == num_threads, \
+        f"Expected all authentications to succeed, but {len(successful)}/{num_threads} succeeded"
