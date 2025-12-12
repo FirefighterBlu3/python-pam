@@ -22,8 +22,8 @@ from ctypes import (
     py_object,
     sizeof,
 )
+from typing import Any
 from ctypes.util import find_library
-from typing import Union
 
 PAM_ABORT = 26
 PAM_ACCT_EXPIRED = 13
@@ -131,7 +131,15 @@ conv_func = CFUNCTYPE(c_int,
                       c_void_p)
 
 
-def my_conv(n_messages, messages, p_response, libc, msg_list: list, password: bytes, encoding: str):
+def my_conv(
+    n_messages: int,
+    messages: POINTER(POINTER(PamMessage)),
+    p_response: POINTER(POINTER(PamResponse)),
+    libc: Any,
+    msg_list: list[str],
+    password: bytes,
+    encoding: str,
+) -> int:
     """Simple conversation function that responds to any
        prompt where the echo is off with the supplied password"""
     # Create an array of n_messages response objects
@@ -182,8 +190,8 @@ class PamAuthenticator:
     This class provides methods to authenticate users against Linux-PAM,
     manage PAM sessions, and handle PAM environment variables.
     """
-    code = 0
-    reason = None  # type: Union[str, bytes, None]
+    code: int = 0
+    reason: str | bytes | None = None
 
     def __init__(self):
         # use a trick of dlopen(), this effectively becomes
@@ -198,8 +206,8 @@ class PamAuthenticator:
         libpam = CDLL(find_library("pam"))
         libpam_misc = CDLL(find_library("pam_misc"))
 
-        self.handle = None
-        self.messages = []
+        self.handle: PamHandle | None = None
+        self.messages: list[str] = []
 
         self.calloc = libc.calloc
         self.calloc.restype = c_void_p
@@ -261,16 +269,16 @@ class PamAuthenticator:
         self.pam_getenvlist.argtypes = [PamHandle]
 
     def authenticate(
-                self,
-                username,                       # type: Union[str, bytes]
-                password,                       # type: Union[str, bytes]
-                service='login',                # type: Union[str, bytes]
-                env=None,                       # type: dict
-                call_end=True,                  # type: bool
-                encoding='utf-8',               # type: str
-                resetcreds=True,                # type: bool
-                print_failure_messages=False    # type: bool
-                ):                              # type: (...) -> bool
+        self,
+        username: str | bytes,
+        password: str | bytes,
+        service: str | bytes = 'login',
+        env: dict[str, str] | None = None,
+        call_end: bool = True,
+        encoding: str = 'utf-8',
+        resetcreds: bool = True,
+        print_failure_messages: bool = False,
+    ) -> bool:
         """username and password authentication for the given service.
 
         Returns True for success, or False for failure.
@@ -386,7 +394,7 @@ class PamAuthenticator:
         self.reason = self.pam_strerror(self.handle, auth_success)
 
         if sys.version_info >= (3,):  # pragma: no branch (we don't test non-py3 versions)
-            self.reason = self.reason.decode(encoding)  # type: ignore
+            self.reason = self.reason.decode(encoding)  # type: ignore[assignment]
 
         if call_end and hasattr(self, 'pam_end'):  # pragma: no branch
             self.pam_end(self.handle, auth_success)
@@ -397,7 +405,7 @@ class PamAuthenticator:
 
         return auth_success == PAM_SUCCESS
 
-    def end(self):
+    def end(self) -> int:
         """A direct call to pam_end()
         Returns:
           Linux-PAM return value as int
@@ -410,7 +418,7 @@ class PamAuthenticator:
 
         return retval
 
-    def open_session(self, encoding='utf-8'):
+    def open_session(self, encoding: str = 'utf-8') -> int:
         """Call pam_open_session as required by the pam_api
         Returns:
           Linux-PAM return value as int
@@ -427,7 +435,7 @@ class PamAuthenticator:
 
         return retval
 
-    def close_session(self, encoding='utf-8'):
+    def close_session(self, encoding: str = 'utf-8') -> int:
         """Call pam_close_session as required by the pam_api
         Returns:
           Linux-PAM return value as int
@@ -444,7 +452,7 @@ class PamAuthenticator:
 
         return retval
 
-    def misc_setenv(self, name, value, readonly, encoding='utf-8'):
+    def misc_setenv(self, name: str, value: str, readonly: int, encoding: str = 'utf-8') -> int:
         """A wrapper for the pam_misc_setenv function
         Args:
           name: key name of the environment variable
@@ -460,7 +468,7 @@ class PamAuthenticator:
                                     value.encode(encoding),
                                     readonly)
 
-    def putenv(self, name_value, encoding='utf-8'):
+    def putenv(self, name_value: str, encoding: str = 'utf-8') -> int:
         """A wrapper for the pam_putenv function
         Args:
           name_value: environment variable in the format KEY=VALUE
@@ -482,7 +490,7 @@ class PamAuthenticator:
 
         return retval
 
-    def getenv(self, key, encoding='utf-8'):
+    def getenv(self, key: str | bytes, encoding: str = 'utf-8') -> str | None:
         """A wrapper for the pam_getenv function
         Args:
           key name of the environment variable
@@ -512,7 +520,7 @@ class PamAuthenticator:
 
         return value
 
-    def getenvlist(self, encoding='utf-8'):
+    def getenvlist(self, encoding: str = 'utf-8') -> dict[str, str]:
         """A wrapper for the pam_getenvlist function
         Returns:
           environment as python dictionary

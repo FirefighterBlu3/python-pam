@@ -16,6 +16,7 @@ pytest-cov = "^4.0.0"
 pylint = "^3.0.0"
 tox = "^4.0.0"
 bandit = "*"
+mypy = "*"
 
 [tool.coverage.run]
 source = ["pam"]
@@ -48,6 +49,28 @@ disable = [
     "too-few-public-methods",
     "wrong-import-position",  # Imports are intentionally after version check
 ]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+ignore_missing_imports = true
+files = ["python-pam/pam"]
+
+[[tool.mypy.overrides]]
+module = [
+    "ctypes.*",
+    "ctypes.util.*",
+]
+ignore_missing_imports = true
 
 [build-system]
 requires = ["poetry-core"]

@@ -118,17 +118,19 @@ __all__ = [
     'PAM_XDISPLAY',
     ]
 
-__PA = None
+__PA: PamAuthenticator | None = None
 
 
-def authenticate(username,
-                 password,
-                 service='login',
-                 env=None,
-                 call_end=True,
-                 encoding='utf-8',
-                 resetcreds=True,
-                 print_failure_messages=False):
+def authenticate(
+    username: str | bytes,
+    password: str | bytes,
+    service: str | bytes = 'login',
+    env: dict[str, str] | None = None,
+    call_end: bool = True,
+    encoding: str = 'utf-8',
+    resetcreds: bool = True,
+    print_failure_messages: bool = False,
+) -> bool:
     """Authenticate a user against PAM.
 
     This is a convenience function that creates a PamAuthenticator instance
