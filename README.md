@@ -24,7 +24,7 @@ Python 3.9.7 (default, Oct 10 2021, 15:13:22)
 [GCC 11.1.0] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>> import pam
->>> p = pam.authenticate()
+>>> p = pam.pam()
 >>> p.authenticate('david', 'correctpassword')
 True
 >>> p.authenticate('david', 'badpassword')
