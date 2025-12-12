@@ -1,6 +1,6 @@
 # python-pam
 
-Python pam module supporting py3 (and py2) for Linux type systems (!windows)
+Python pam module supporting py3 for Linux type systems (!windows, !py2)
 
 Commandline example:
 
