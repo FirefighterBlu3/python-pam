@@ -59,9 +59,7 @@ from .__internals import PAM_XDISPLAY
 from .__internals import PamAuthenticator
 
 if __sys.version_info < (3, ):  # pragma: no cover
-    print('WARNING, Python 2 is EOL and therefore py2 support in this '
-          "package is deprecated. It won't be actively checked for"
-          'correctness')
+    print('WARNING, Python 2 is EOL not supported')
 
 __all__ = [
     'authenticate',

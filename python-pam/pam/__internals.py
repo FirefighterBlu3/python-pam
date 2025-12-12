@@ -340,6 +340,14 @@ class PamAuthenticator:
             # starting up PAM
             self.code = retval
             self.reason = f"pam_start() failed: {self.pam_strerror(self.handle, retval)}"
+            self.handle = None
+            return False
+
+        # Verify handle was properly initialized by pam_start
+        if self.handle is None or self.handle.handle == 0:
+            self.code = PAM_SYSTEM_ERR
+            self.reason = "pam_start() succeeded but handle was not properly initialized"
+            self.handle = None
             return False
 
         # set the TTY, required when pam_securetty is used and the username
@@ -372,6 +380,12 @@ class PamAuthenticator:
             if not isinstance(env, dict):
                 raise TypeError('"env" must be a dict')
 
+            # Ensure handle is still valid before setting environment variables
+            if self.handle is None or self.handle.handle == 0:
+                self.code = PAM_SYSTEM_ERR
+                self.reason = "PAM handle became invalid before setting environment variables"
+                return False
+
             for key, value in env.items():
                 if isinstance(key, bytes) and b'\x00' in key:
                     raise ValueError('"env{}" key cannot contain NULLs')
@@ -381,17 +395,37 @@ class PamAuthenticator:
                 name_value = f"{key}={value}"
                 retval = self.putenv(name_value, encoding)
 
+        # Ensure handle is still valid before authentication
+        if self.handle is None or self.handle.handle == 0:
+            self.code = PAM_SYSTEM_ERR
+            self.reason = "PAM handle became invalid before authentication"
+            return False
+
         auth_success = self.pam_authenticate(self.handle, 0)
 
         if auth_success == PAM_SUCCESS:
+            # Ensure handle is still valid before account management
+            if self.handle is None or self.handle.handle == 0:
+                self.code = PAM_SYSTEM_ERR
+                self.reason = "PAM handle became invalid before account management"
+                return False
             auth_success = self.pam_acct_mgmt(self.handle, 0)
 
         if auth_success == PAM_SUCCESS and resetcreds:
+            # Ensure handle is still valid before setting credentials
+            if self.handle is None or self.handle.handle == 0:
+                self.code = PAM_SYSTEM_ERR
+                self.reason = "PAM handle became invalid before setting credentials"
+                return False
             auth_success = self.pam_setcred(self.handle, PAM_REINITIALIZE_CRED)
 
         # store information to inform the caller why we failed
         self.code = auth_success
-        self.reason = self.pam_strerror(self.handle, auth_success)
+        # Ensure handle is still valid before getting error message
+        if self.handle is not None and self.handle.handle != 0:
+            self.reason = self.pam_strerror(self.handle, auth_success)
+        else:
+            self.reason = f"PAM error {auth_success} (handle invalid)"
 
         if sys.version_info >= (3,):  # pragma: no branch (we don't test non-py3 versions)
             self.reason = self.reason.decode(encoding)  # type: ignore[assignment]
