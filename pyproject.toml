@@ -5,9 +5,7 @@ description = ""
 authors = [{name = "David Ford", email = "david@blue-labs.org"}]
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-    "six",
-]
+dependencies = []
 
 [tool.poetry]
 packages = [{include = "pam", from = "python-pam"}]
