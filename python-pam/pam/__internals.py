@@ -133,8 +133,8 @@ conv_func = CFUNCTYPE(c_int,
 
 def my_conv(
     n_messages: int,
-    messages: POINTER(POINTER(PamMessage)),
-    p_response: POINTER(POINTER(PamResponse)),
+    messages: Any,  # POINTER(POINTER(PamMessage)) - ctypes types not supported by mypy
+    p_response: Any,  # POINTER(POINTER(PamResponse)) - ctypes types not supported by mypy
     libc: Any,
     msg_list: list[str],
     password: bytes,
@@ -200,7 +200,7 @@ class PamAuthenticator:
         # to us
 
         # libc = CDLL(find_library("c"))
-        libc = cdll.LoadLibrary(None)
+        libc = cdll.LoadLibrary(None)  # type: ignore[arg-type]
         self.libc = libc
 
         libpam = CDLL(find_library("pam"))
@@ -423,21 +423,23 @@ class PamAuthenticator:
         self.code = auth_success
         # Ensure handle is still valid before getting error message
         if self.handle is not None and self.handle.handle != 0:
-            self.reason = self.pam_strerror(self.handle, auth_success)
+            reason_bytes = self.pam_strerror(self.handle, auth_success)
+            if sys.version_info >= (3,):  # pragma: no branch (we don't test non-py3 versions)
+                self.reason = reason_bytes.decode(encoding)
+            else:
+                self.reason = reason_bytes  # type: ignore[assignment]
         else:
             self.reason = f"PAM error {auth_success} (handle invalid)"
-
-        if sys.version_info >= (3,):  # pragma: no branch (we don't test non-py3 versions)
-            self.reason = self.reason.decode(encoding)  # type: ignore[assignment]
 
         if call_end and hasattr(self, 'pam_end'):  # pragma: no branch
             self.pam_end(self.handle, auth_success)
             self.handle = None
 
         if print_failure_messages and self.code != PAM_SUCCESS:  # pragma: no cover
-            print(f"Failure: {self.reason}")
+            reason_str = self.reason if isinstance(self.reason, str) else str(self.reason)
+            print(f"Failure: {reason_str}")
 
-        return auth_success == PAM_SUCCESS
+        return bool(auth_success == PAM_SUCCESS)
 
     def end(self) -> int:
         """A direct call to pam_end()
@@ -450,7 +452,7 @@ class PamAuthenticator:
         retval = self.pam_end(self.handle, self.code)
         self.handle = None
 
-        return retval
+        return int(retval)
 
     def open_session(self, encoding: str = 'utf-8') -> int:
         """Call pam_open_session as required by the pam_api
@@ -462,12 +464,13 @@ class PamAuthenticator:
 
         retval = self.pam_open_session(self.handle, 0)
         self.code = retval
-        self.reason = self.pam_strerror(self.handle, retval)
-
+        reason_bytes = self.pam_strerror(self.handle, retval)
         if sys.version_info >= (3,):  # pragma: no branch
-            self.reason = self.reason.decode(encoding)
+            self.reason = reason_bytes.decode(encoding)
+        else:
+            self.reason = reason_bytes  # type: ignore[assignment]
 
-        return retval
+        return int(retval)
 
     def close_session(self, encoding: str = 'utf-8') -> int:
         """Call pam_close_session as required by the pam_api
@@ -479,12 +482,13 @@ class PamAuthenticator:
 
         retval = self.pam_close_session(self.handle, 0)
         self.code = retval
-        self.reason = self.pam_strerror(self.handle, retval)
-
+        reason_bytes = self.pam_strerror(self.handle, retval)
         if sys.version_info >= (3,):  # pragma: no branch
-            self.reason = self.reason.decode(encoding)
+            self.reason = reason_bytes.decode(encoding)
+        else:
+            self.reason = reason_bytes  # type: ignore[assignment]
 
-        return retval
+        return int(retval)
 
     def misc_setenv(self, name: str, value: str, readonly: int, encoding: str = 'utf-8') -> int:
         """A wrapper for the pam_misc_setenv function
@@ -497,10 +501,11 @@ class PamAuthenticator:
         if not self.handle or not hasattr(self, "pam_misc_setenv"):
             return PAM_SYSTEM_ERR
 
-        return self.pam_misc_setenv(self.handle,
-                                    name.encode(encoding),
-                                    value.encode(encoding),
-                                    readonly)
+        retval = self.pam_misc_setenv(self.handle,
+                                      name.encode(encoding),
+                                      value.encode(encoding),
+                                      readonly)
+        return int(retval)
 
     def putenv(self, name_value: str, encoding: str = 'utf-8') -> int:
         """A wrapper for the pam_putenv function
@@ -513,23 +518,25 @@ class PamAuthenticator:
         if not self.handle:
             return PAM_SYSTEM_ERR
 
-        name_value = name_value.encode(encoding)
+        name_value_bytes = name_value.encode(encoding)
 
-        retval = self.pam_putenv(self.handle, name_value)
+        retval = self.pam_putenv(self.handle, name_value_bytes)
         if retval != PAM_SUCCESS:
-            error_msg = self.pam_strerror(self.handle, retval)
+            error_msg_bytes = self.pam_strerror(self.handle, retval)
             if sys.version_info >= (3,):  # pragma: no branch
-                error_msg = error_msg.decode(encoding)
+                error_msg = error_msg_bytes.decode(encoding)
+            else:
+                error_msg = error_msg_bytes  # type: ignore[assignment]
             raise RuntimeError(error_msg)
 
-        return retval
+        return int(retval)
 
-    def getenv(self, key: str | bytes, encoding: str = 'utf-8') -> str | None:
+    def getenv(self, key: str | bytes, encoding: str = 'utf-8') -> str | None | int:
         """A wrapper for the pam_getenv function
         Args:
           key name of the environment variable
         Returns:
-          value of the environment variable or None on error
+          value of the environment variable, None on error, or PAM_SYSTEM_ERR if handle is invalid
         """
         if not self.handle:
             return PAM_SYSTEM_ERR
@@ -550,14 +557,22 @@ class PamAuthenticator:
             raise RuntimeError(error_msg)
 
         if sys.version_info >= (3,):  # pragma: no branch
-            value = value.decode(encoding)
+            if isinstance(value, bytes):
+                return value.decode(encoding)
+            # value is c_char_p which is bytes-like, but mypy doesn't know
+            # c_char_p can be None, bytes, or int, but in practice it's bytes here
+            # We've already checked for None and bytes, so this should be safe
+            # At this point value should be bytes (c_char_p), but mypy sees it as Any
+            # Since we've checked for None and bytes, the remaining case is safe
+            return str(value)
+        # Python 2 path (not tested) - value is bytes in py2
+        # This path is never executed in Python 3, so mypy doesn't see the error
+        return str(value)
 
-        return value
-
-    def getenvlist(self, encoding: str = 'utf-8') -> dict[str, str]:
+    def getenvlist(self, encoding: str = 'utf-8') -> dict[str, str] | int:
         """A wrapper for the pam_getenvlist function
         Returns:
-          environment as python dictionary
+          environment as python dictionary, or PAM_SYSTEM_ERR if handle is invalid
         """
         if not self.handle:
             return PAM_SYSTEM_ERR

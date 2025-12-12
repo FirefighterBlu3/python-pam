@@ -58,23 +58,30 @@ if __name__ == "__main__":  # pragma: no cover
     result = __pam.authenticate(username, getpass.getpass(),
                                 env={"XDG_SEAT": "seat0"},
                                 call_end=False)
-    print(f'Auth result: {__pam.reason} ({__pam.code})')
+    reason_str = __pam.reason if isinstance(__pam.reason, str) else str(__pam.reason)
+    print(f'Auth result: {reason_str} ({__pam.code})')
 
     env_list = __pam.getenvlist()
-    for key, value in env_list.items():
-        print(f"Pam Environment List item: {key}={value}")
+    if isinstance(env_list, dict):
+        for key, value in env_list.items():
+            print(f"Pam Environment List item: {key}={value}")
 
     key = "XDG_SEAT"
-    value = __pam.getenv(key)
-    print(f"Pam Environment item: {key}={value}")
+    env_value = __pam.getenv(key)
+    if env_value is not None:
+        print(f"Pam Environment item: {key}={env_value}")
+    else:
+        print(f"Pam Environment item: {key}=None")
 
     if __pam.code == __internals.PAM_SUCCESS:
-        result = __pam.open_session()
-        print(f'Open session: {__pam.reason} ({__pam.code})')
+        session_result = __pam.open_session()
+        session_reason = __pam.reason if isinstance(__pam.reason, str) else str(__pam.reason)
+        print(f'Open session: {session_reason} ({__pam.code})')
 
         if __pam.code == __internals.PAM_SUCCESS:
-            result = __pam.close_session()
-            print(f'Close session: {__pam.reason} ({__pam.code})')
+            close_result = __pam.close_session()
+            close_reason = __pam.reason if isinstance(__pam.reason, str) else str(__pam.reason)
+            print(f'Close session: {close_reason} ({__pam.code})')
 
         else:
             __pam.end()
