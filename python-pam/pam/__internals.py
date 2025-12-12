@@ -1,22 +1,31 @@
+"""Internal PAM implementation using ctypes.
+
+This module provides the low-level interface to Linux-PAM using ctypes,
+including structure definitions, constants, and the PamAuthenticator class.
+"""
 import os
 import sys
-from ctypes import cdll
-from ctypes import CFUNCTYPE
-from ctypes import CDLL
-from ctypes import POINTER
-from ctypes import Structure
-from ctypes import byref
-from ctypes import cast
-from ctypes import sizeof
-from ctypes import py_object
-from ctypes import c_char
-from ctypes import c_char_p
-from ctypes import c_int
-from ctypes import c_size_t
-from ctypes import c_void_p
-from ctypes import memmove
+from ctypes import (
+    CDLL,
+    CFUNCTYPE,
+    POINTER,
+    Structure,
+    byref,
+    c_char,
+    c_char_p,
+    c_int,
+    c_size_t,
+    c_void_p,
+    cast,
+    cdll,
+    memmove,
+    py_object,
+    sizeof,
+)
 from ctypes.util import find_library
 from typing import Union
+
+import six
 
 PAM_ABORT = 26
 PAM_ACCT_EXPIRED = 13
@@ -106,7 +115,7 @@ class PamMessage(Structure):
     _fields_ = [("msg_style", c_int), ("msg", c_char_p)]
 
     def __repr__(self):
-        return "<PamMessage style: %i, content: %s >" % (self.msg_style, self.msg)
+        return f"<PamMessage style: {self.msg_style}, content: {self.msg} >"
 
 
 class PamResponse(Structure):
@@ -114,7 +123,7 @@ class PamResponse(Structure):
     _fields_ = [("resp", c_char_p), ("resp_retcode", c_int)]
 
     def __repr__(self):
-        return "<PamResponse code: %i, content: %s >" % (self.resp_retcode, self.resp)
+        return f"<PamResponse code: {self.resp_retcode}, content: {self.resp} >"
 
 
 conv_func = CFUNCTYPE(c_int,
@@ -134,12 +143,10 @@ def my_conv(n_messages, messages, p_response, libc, msg_list: list, password: by
 
     cpassword = c_char_p(password)
 
-    '''
-    PAM_PROMPT_ECHO_OFF = 1
-    PAM_PROMPT_ECHO_ON = 2
-    PAM_ERROR_MSG = 3
-    PAM_TEXT_INFO = 4
-    '''
+    # PAM_PROMPT_ECHO_OFF = 1
+    # PAM_PROMPT_ECHO_ON = 2
+    # PAM_ERROR_MSG = 3
+    # PAM_TEXT_INFO = 4
 
     addr = calloc(n_messages, sizeof(PamResponse))
     response = cast(addr, POINTER(PamResponse))
@@ -172,6 +179,11 @@ class PamConv(Structure):
 
 
 class PamAuthenticator:
+    """PAM authenticator class.
+
+    This class provides methods to authenticate users against Linux-PAM,
+    manage PAM sessions, and handle PAM environment variables.
+    """
     code = 0
     reason = None  # type: Union[str, bytes, None]
 
@@ -295,11 +307,11 @@ class PamAuthenticator:
 
             return my_conv(n_messages, messages, p_response, self.libc, msg_list, password, encoding)
 
-        if isinstance(username, str):
+        if isinstance(username, six.text_type):
             username = username.encode(encoding)
-        if isinstance(password, str):
+        if isinstance(password, six.text_type):
             password = password.encode(encoding)
-        if isinstance(service, str):
+        if isinstance(service, six.text_type):
             service = service.encode(encoding)
 
         if b'\x00' in username or b'\x00' in password or b'\x00' in service:
@@ -321,8 +333,7 @@ class PamAuthenticator:
             # This is not an authentication error, something has gone wrong
             # starting up PAM
             self.code = retval
-            self.reason = ("pam_start() failed: %s" %
-                           self.pam_strerror(self.handle, retval))
+            self.reason = f"pam_start() failed: {self.pam_strerror(self.handle, retval)}"
             return False
 
         # set the TTY, required when pam_securetty is used and the username
@@ -361,7 +372,7 @@ class PamAuthenticator:
                 if isinstance(value, bytes) and b'\x00' in value:
                     raise ValueError('"env{}" value cannot contain NULLs')
 
-                name_value = "{}={}".format(key, value)
+                name_value = f"{key}={value}"
                 retval = self.putenv(name_value, encoding)
 
         auth_success = self.pam_authenticate(self.handle, 0)
@@ -466,7 +477,10 @@ class PamAuthenticator:
 
         retval = self.pam_putenv(self.handle, name_value)
         if retval != PAM_SUCCESS:
-            raise Exception(self.pam_strerror(self.handle, retval))
+            error_msg = self.pam_strerror(self.handle, retval)
+            if sys.version_info >= (3,):  # pragma: no branch
+                error_msg = error_msg.decode(encoding)
+            raise RuntimeError(error_msg)
 
         return retval
 
@@ -481,16 +495,20 @@ class PamAuthenticator:
             return PAM_SYSTEM_ERR
 
         #  can't happen unless someone is using internals directly
-        if isinstance(key, str):  # pragma: no branch
+        if sys.version_info >= (3, ):  # pragma: no branch
+            if isinstance(key, six.text_type):  # pragma: no branch
                 key = key.encode(encoding)
 
         value = self.pam_getenv(self.handle, key)
 
         if isinstance(value, type(None)):
-            return
+            return None
 
         if isinstance(value, int):  # pragma: no cover
-            raise Exception(self.pam_strerror(self.handle, value))
+            error_msg = self.pam_strerror(self.handle, value)
+            if sys.version_info >= (3,):  # pragma: no branch
+                error_msg = error_msg.decode(encoding)
+            raise RuntimeError(error_msg)
 
         if sys.version_info >= (3,):  # pragma: no branch
             value = value.decode(encoding)

@@ -1,71 +1,56 @@
-[build-system]
-requires = [
-    'setuptools>=44',
-    'wheel>=0.30.0',
-    'six',
+[project]
+name = "python-pam"
+version = "2.1.0-beta1"
+description = ""
+authors = [{name = "David Ford", email = "david@blue-labs.org"}]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "six",
 ]
-build-backend = 'setuptools.build_meta'
 
-# ignore the tox documentation, it IS NOT supported yet
-# https://github.com/tox-dev/tox/issues/2148
-#[tox]
-#isolated_build = true
+[tool.poetry]
+packages = [{include = "pam", from = "python-pam"}]
 
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py310
-isolated_build = true
-#skipsdist = true
+[tool.poetry.group.dev.dependencies]
+pytest = "^6.2.4"
+pytest-cov = "^4.0.0"
+pylint = "^3.0.0"
+tox = "^4.0.0"
+bandit = "*"
 
-[gh-actions]
-python =
-    3.7: py37
-    3.8: py38
-    3.9: py39
-    3.10: py310
+[tool.coverage.run]
+source = ["pam"]
+omit = ["*/tests/*", "*/test_*.py"]
 
-[testenv]
-basepython = python3.10
-passenv = *
-deps =
-    bandit
-    flake8
-    mypy
-    types-six
-    coverage
-    pytest-cov
-    pytest
-    -rrequirements.txt
-
-commands =
-    flake8 src/pam/
-    mypy
-    bandit -r src -c "pyproject.toml"
-    pytest --cov -r w --capture=sys -vvv --cov-report=html
-"""
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 85.0
 
 [tool.bandit]
 exclude_dirs = ["./venv", "./test", ]
 recursive = true
 
-[tool.mypy]
-files = ["src/pam/__init__.py", "src/pam/__internals.py"]
-ignore_missing_imports = true
+[tool.pylint.main]
+jobs = 0
 
-[tool.pytest]
-python_files = "test_*.py"
-norecursedirs = ".tox"
+[tool.pylint.format]
+max-line-length = 120
 
-[tool.coverage.run]
-branch = true
-# awkward how I can include "pam" but I have to be incredibly specific when omitting
-source = ["pam"]
-omit = ["*/pam/pam.py", "*/pam/version.py",]
+[tool.pylint."messages control"]
+disable = [
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-locals",
+    "too-many-instance-attributes",
+    "too-few-public-methods",
+    "wrong-import-position",  # Imports are intentionally after version check
+]
 
-[tool.coverage.html]
-directory = "htmlcov"
-
-[tool.coverage.report]
-skip_empty = true
-fail_under = 100
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -30,23 +30,25 @@ a user against the Pluggable Authentication Modules (PAM) on the system.
 Implemented using ctypes, so no compilation is necessary.
 '''
 
-import __internals
+import six
+from . import __internals
 
 if __name__ == "__main__":  # pragma: no cover
     import readline
     import getpass
 
     def input_with_prefill(prompt, text):
+        """Input function with prefilled text."""
         def hook():
             readline.insert_text(text)
             readline.redisplay()
 
         readline.set_pre_input_hook(hook)
-        result = input(prompt)  # nosec (bandit; python2)
+        user_input = six.moves.input(prompt)  # nosec (bandit; python2)
 
         readline.set_pre_input_hook()
 
-        return result
+        return user_input
 
     __pam = __internals.PamAuthenticator()
 
@@ -57,23 +59,23 @@ if __name__ == "__main__":  # pragma: no cover
     result = __pam.authenticate(username, getpass.getpass(),
                                 env={"XDG_SEAT": "seat0"},
                                 call_end=False)
-    print('Auth result: {} ({})'.format(__pam.reason, __pam.code))
+    print(f'Auth result: {__pam.reason} ({__pam.code})')
 
     env_list = __pam.getenvlist()
     for key, value in env_list.items():
-        print("Pam Environment List item: {}={}".format(key, value))
+        print(f"Pam Environment List item: {key}={value}")
 
     key = "XDG_SEAT"
     value = __pam.getenv(key)
-    print("Pam Environment item: {}={}".format(key, value))
+    print(f"Pam Environment item: {key}={value}")
 
     if __pam.code == __internals.PAM_SUCCESS:
         result = __pam.open_session()
-        print('Open session: {} ({})'.format(__pam.reason, __pam.code))
+        print(f'Open session: {__pam.reason} ({__pam.code})')
 
         if __pam.code == __internals.PAM_SUCCESS:
             result = __pam.close_session()
-            print('Close session: {} ({})'.format(__pam.reason, __pam.code))
+            print(f'Close session: {__pam.reason} ({__pam.code})')
 
         else:
             __pam.end()
