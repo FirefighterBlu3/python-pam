@@ -22,7 +22,8 @@
 '''
 PAM module for python
 
-This is a legacy file, it is not used. Here for example.
+This is a legacy implementation of the real module, kept around as a usage
+example.
 
 Provides an authenticate function that will allow the caller to authenticate
 a user against the Pluggable Authentication Modules (PAM) on the system.
@@ -30,7 +31,7 @@ a user against the Pluggable Authentication Modules (PAM) on the system.
 Implemented using ctypes, so no compilation is necessary.
 '''
 
-import __internals
+import pam.__internals
 
 if __name__ == "__main__":  # pragma: no cover
     import readline
