@@ -15,6 +15,7 @@ from ctypes import c_int
 from ctypes import c_size_t
 from ctypes import c_void_p
 from ctypes import memmove
+from ctypes import DEFAULT_MODE
 from ctypes.util import find_library
 from typing import Union
 
@@ -175,7 +176,7 @@ class PamAuthenticator:
     code = 0
     reason = None  # type: Union[str, bytes, None]
 
-    def __init__(self):
+    def __init__(self, mode=None):
         # use a trick of dlopen(), this effectively becomes
         # dlopen("", ...) which opens our own executable. since 'python' has
         # a libc dependency, this means libc symbols are already available
@@ -185,7 +186,7 @@ class PamAuthenticator:
         libc = cdll.LoadLibrary(None)
         self.libc = libc
 
-        libpam = CDLL(find_library("pam"))
+        libpam = CDLL(find_library("pam"), mode=mode if mode else DEFAULT_MODE)
         libpam_misc = CDLL(find_library("pam_misc"))
 
         self.handle = None
