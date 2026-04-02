@@ -52,8 +52,8 @@ files = ["src/pam/__init__.py", "src/pam/__internals.py"]
 ignore_missing_imports = true
 
 [tool.pytest]
-python_files = "test_*.py"
-norecursedirs = ".tox"
+python_files = ["test_*.py"]
+norecursedirs = [".tox"]
 
 [tool.coverage.run]
 branch = true
