@@ -1,0 +1,6 @@
+# Pins for the Update CI requirements workflow bootstrap (pip-tools).
+# Regenerated with:
+#   pip-compile --generate-hashes --allow-unsafe \
+#     -o .github/requirements-update-ci.txt .github/requirements-update-ci.in
+pip==25.0.1
+pip-tools==7.6.0

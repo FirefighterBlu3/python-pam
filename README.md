@@ -1,6 +1,9 @@
 # python-pam
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FirefighterBlu3/python-pam/badge)](https://scorecard.dev/viewer/?uri=github.com/FirefighterBlu3/python-pam)
+<!-- After creating the project at https://www.bestpractices.dev/en/projects/new , replace PROJECT_ID and uncomment:
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID)
+-->
 
 Python pam module supporting py3 for Linux type systems (!windows, !py2)
 

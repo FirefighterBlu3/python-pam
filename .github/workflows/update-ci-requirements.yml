@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - .github/requirements-ci.in
+      - .github/requirements-update-ci.in
+      - .github/requirements-update-ci.txt
       - .github/workflows/update-ci-requirements.yml
       - poetry.lock
       - pyproject.toml
@@ -27,7 +29,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install pip-tools
-        run: python -m pip install 'pip==25.0.1' 'pip-tools==7.6.0'
+        run: python -m pip install --require-hashes -r .github/requirements-update-ci.txt
 
       - name: Sync tox pin from poetry.lock and compile hashes
         run: |
