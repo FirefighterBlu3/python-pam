@@ -147,7 +147,7 @@ def authenticate(
     Returns:
         bool: True if authentication succeeded, False otherwise
     """
-    global __PA  # noqa: PLW0603
+    global __PA  # noqa: W0603, PLW0603
 
     if __PA is None:  # pragma: no branch
         __PA = PamAuthenticator()

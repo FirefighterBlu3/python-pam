@@ -4,19 +4,31 @@ version = "2.1.0-beta1"
 description = ""
 authors = [{name = "David Ford", email = "david@blue-labs.org"}]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = []
+
+#[project.scripts]
+#lint = "pylint"
+#test = "pytest"
 
 [tool.poetry]
 packages = [{include = "pam", from = "python-pam"}]
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^6.2.4"
-pytest-cov = "^4.0.0"
+pytest = "^8.0.0"
+pytest-cov = "^5.0.0"
 pylint = "^3.0.0"
 tox = "^4.0.0"
 bandit = "*"
 mypy = "*"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.0.0"
+pytest-cov = "^5.0.0"
+pytest-env = "^1.1.0"
+tox = "*"
+flake8 = "*"
+pylint = "*"
 
 [tool.coverage.run]
 source = ["pam"]

@@ -31,11 +31,7 @@ a user against the Pluggable Authentication Modules (PAM) on the system.
 Implemented using ctypes, so no compilation is necessary.
 '''
 
-<<<<<<< HEAD:src/pam/pam.py
-import __internals
-=======
 import pam.__internals
->>>>>>> master:examples/pam.py
 
 if __name__ == "__main__":  # pragma: no cover
     import readline
