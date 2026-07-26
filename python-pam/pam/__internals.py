@@ -23,8 +23,8 @@ from ctypes import (
     py_object,
     sizeof,
 )
-from typing import Any
 from ctypes.util import find_library
+from typing import Any
 
 PAM_ABORT = 26
 PAM_ACCT_EXPIRED = 13
@@ -284,7 +284,8 @@ class PamAuthenticator:
             cls.pam_putenv.restype = c_int
             cls.pam_putenv.argtypes = [PamHandle, c_char_p]
 
-            if libpam_misc._name:  # pragma: no branch
+            # CDLL._name is the loaded library path (empty if unavailable)
+            if getattr(libpam_misc, '_name', None):  # pragma: no branch
                 cls.pam_misc_setenv = libpam_misc.pam_misc_setenv
                 cls.pam_misc_setenv.restype = c_int
                 cls.pam_misc_setenv.argtypes = [PamHandle, c_char_p, c_char_p,
@@ -302,6 +303,25 @@ class PamAuthenticator:
 
     def __init__(self):
         self._ensure_libs()
+        # Cheap instance aliases to shared class bindings so callers/tests can
+        # patch per-object and static analyzers see callables on self.
+        cls = self.__class__
+        self.libc = cls.libc
+        self.calloc = cls.calloc
+        self.pam_end = cls.pam_end
+        self.pam_start = cls.pam_start
+        self.pam_acct_mgmt = cls.pam_acct_mgmt
+        self.pam_set_item = cls.pam_set_item
+        self.pam_setcred = cls.pam_setcred
+        self.pam_strerror = cls.pam_strerror
+        self.pam_authenticate = cls.pam_authenticate
+        self.pam_open_session = cls.pam_open_session
+        self.pam_close_session = cls.pam_close_session
+        self.pam_putenv = cls.pam_putenv
+        self.pam_misc_setenv = cls.pam_misc_setenv
+        self.pam_getenv = cls.pam_getenv
+        self.pam_getenvlist = cls.pam_getenvlist
+
         self.handle: PamHandle | None = None
         self.messages: list[str] = []
         self.code: int = 0
