@@ -87,7 +87,7 @@ def authenticate_worker(
                 code = pam_obj.code
                 reason = pam_obj.reason
             else:
-                # Use the global authenticate function (shared instance)
+                # Use the module authenticate function (fresh instance per call)
                 auth_result = authenticate(username, password)
                 # Note: With shared instance, we can't easily get code/reason
                 code = PAM_SUCCESS if auth_result else -1
@@ -259,7 +259,7 @@ Examples:
   # Custom thread/attempt configuration
   python stress_test_threaded.py --threads 20 --attempts 5
 
-  # Test with shared instance (global authenticate function)
+  # Test via pam.authenticate() (one PamAuthenticator per call)
   python stress_test_threaded.py --shared
         """
     )
@@ -295,7 +295,7 @@ Examples:
     parser.add_argument(
         '--shared',
         action='store_true',
-        help='Use shared instance (global authenticate function) instead of separate instances'
+        help='Use pam.authenticate() instead of an explicit PamAuthenticator per attempt'
     )
     
     parser.add_argument(

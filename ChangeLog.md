@@ -1,13 +1,16 @@
 # ChangeLog
 
 ## 2.1.0
-December 14, 2025
   - switch to poetry
   - merge outstanding PRs
   - make handle checks and make them more robust
   - update documentation with better example
   - remove py2 support
   - tox test suite set to py312 and py313
+  - fix #40: `pam.authenticate()` no longer reuses a process-global
+    `PamAuthenticator` (thread-safe concurrent auth); libpam ctypes bindings
+    are loaded once and shared for performance
+  - document threading model (do not share one `PamAuthenticator` across threads)
 
 ## 2.0.2 Latest
 March 17, 2022

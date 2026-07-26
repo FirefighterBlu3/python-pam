@@ -116,8 +116,6 @@ __all__ = [
     'PAM_XDISPLAY',
     ]
 
-__PA: PamAuthenticator | None = None
-
 
 def authenticate(
     username: str | bytes,
@@ -131,8 +129,14 @@ def authenticate(
 ) -> bool:
     """Authenticate a user against PAM.
 
-    This is a convenience function that creates a PamAuthenticator instance
-    (reusing a global instance if available) and calls its authenticate method.
+    Creates a fresh ``PamAuthenticator`` for each call so concurrent use from
+    multiple threads is safe. libpam ctypes bindings are loaded once and shared.
+
+    For result codes after auth, use ``PamAuthenticator`` directly::
+
+        pa = pam.pam()
+        ok = pa.authenticate(user, password)
+        print(pa.code, pa.reason)
 
     Args:
         username: Username to authenticate
@@ -147,14 +151,10 @@ def authenticate(
     Returns:
         bool: True if authentication succeeded, False otherwise
     """
-    global __PA  # noqa: W0603, PLW0603
-
-    if __PA is None:  # pragma: no branch
-        __PA = PamAuthenticator()
-
-    return __PA.authenticate(username, password, service, env, call_end, encoding, resetcreds, print_failure_messages)
+    return PamAuthenticator().authenticate(
+        username, password, service, env, call_end, encoding, resetcreds, print_failure_messages,
+    )
 
 
 # legacy implementations used pam.pam()
 pam = PamAuthenticator  # noqa: N816, C0103
-authenticate.__doc__ = PamAuthenticator.authenticate.__doc__

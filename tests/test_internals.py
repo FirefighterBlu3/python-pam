@@ -160,6 +160,43 @@ def test_PamResponse__repr():
 def test_PamAuthenticator__setup():
     x = PamAuthenticator()
     assert hasattr(x, 'reason')
+    assert PamAuthenticator._libs_ready is True
+    assert PamAuthenticator.pam_start is not None
+
+
+def test_PamAuthenticator__libs_loaded_once():
+    a = PamAuthenticator()
+    b = PamAuthenticator()
+    assert a.pam_start is b.pam_start
+    assert a.libc is b.libc
+    assert PamAuthenticator.calloc is a.calloc
+
+
+def test_module_authenticate_uses_fresh_instance(monkeypatch):
+    """pam.authenticate must not reuse a process-global authenticator (#40)."""
+    from pam import authenticate as module_authenticate
+
+    instances = []
+    real_init = PamAuthenticator.__init__
+
+    def tracking_init(self):
+        real_init(self)
+        instances.append(self)
+
+    monkeypatch.setattr(PamAuthenticator, '__init__', tracking_init)
+
+    # Avoid real PAM; stub authenticate on each new instance via class method wrap
+    def fake_authenticate(self, *args, **kwargs):
+        self.code = PAM_SUCCESS
+        self.reason = 'Success'
+        return True
+
+    monkeypatch.setattr(PamAuthenticator, 'authenticate', fake_authenticate)
+
+    assert module_authenticate('u1', 'p1') is True
+    assert module_authenticate('u2', 'p2') is True
+    assert len(instances) == 2
+    assert instances[0] is not instances[1]
 
 
 def test_PamAuthenticator__requires_username_password(pam_obj):
