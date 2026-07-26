@@ -3,11 +3,33 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FirefighterBlu3/python-pam/badge)](https://scorecard.dev/viewer/?uri=github.com/FirefighterBlu3/python-pam)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13794/badge)](https://www.bestpractices.dev/projects/13794)
 
-Python pam module supporting py3 for Linux type systems (!windows, !py2)
+Python pam module supporting py3 for Linux type systems (!windows)
 
 ## Security
 
 See [SECURITY.md](SECURITY.md) for supported versions and how to report vulnerabilities.
+
+## Threading and concurrency
+
+`pam.authenticate()` is safe to call from many threads at once. Each call uses
+its own PAM handle; libpam ctypes bindings are loaded once and shared (no global
+lock on the auth path).
+
+Do **not** share a single `PamAuthenticator` / `pam.pam()` instance across threads
+without external synchronization. That object owns mutable PAM session state
+(`handle`, `code`, `reason`, `messages`). For sessions (`call_end=False`), keep
+one instance per thread (or serialize access).
+
+High-QPS login APIs should use:
+
+```python
+import pam
+
+if pam.authenticate(username, password, service='myapp'):
+    ...
+```
+
+## Examples
 
 Commandline example:
 
@@ -26,11 +48,9 @@ Close session: Success (0)
 Inline examples:
 
 ```python
-[david@Scott python-pam]$ python
-Python 3.9.7 (default, Oct 10 2021, 15:13:22)
-[GCC 11.1.0] on linux
-Type "help", "copyright", "credits" or "license" for more information.
 >>> import pam
+>>> pam.authenticate('david', 'correctpassword')
+True
 >>> p = pam.pam()
 >>> p.authenticate('david', 'correctpassword')
 True

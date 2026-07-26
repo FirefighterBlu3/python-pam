@@ -5,6 +5,7 @@ including structure definitions, constants, and the PamAuthenticator class.
 """
 import os
 import sys
+import threading
 from ctypes import (
     CDLL,
     CFUNCTYPE,
@@ -22,8 +23,8 @@ from ctypes import (
     py_object,
     sizeof,
 )
-from typing import Any
 from ctypes.util import find_library
+from typing import Any
 
 PAM_ABORT = 26
 PAM_ACCT_EXPIRED = 13
@@ -142,10 +143,13 @@ def my_conv(
 ) -> int:
     """Simple conversation function that responds to any
        prompt where the echo is off with the supplied password"""
-    # Create an array of n_messages response objects
-    calloc = libc.calloc
-    calloc.restype = c_void_p
-    calloc.argtypes = [c_size_t, c_size_t]
+    # Prefer class-level calloc (configured once); fall back for unit tests that
+    # pass a raw libc.
+    calloc = getattr(PamAuthenticator, 'calloc', None)
+    if calloc is None:  # pragma: no cover
+        calloc = libc.calloc
+        calloc.restype = c_void_p
+        calloc.argtypes = [c_size_t, c_size_t]
 
     cpassword = c_char_p(password)
 
@@ -187,86 +191,141 @@ class PamConv(Structure):
 class PamAuthenticator:
     """PAM authenticator class.
 
-    This class provides methods to authenticate users against Linux-PAM,
-    manage PAM sessions, and handle PAM environment variables.
+    Provides methods to authenticate users against Linux-PAM, manage PAM
+    sessions, and handle PAM environment variables.
+
+    Thread safety:
+      - ``pam.authenticate()`` creates a fresh instance per call and is safe
+        for concurrent use (libs are loaded once and shared).
+      - A single ``PamAuthenticator`` instance must not be used from multiple
+        threads at once. For high-QPS auth, prefer ``pam.authenticate()`` or
+        one instance per concurrent caller (default ``call_end=True``).
+      - With ``call_end=False``, the instance owns a live PAM handle for
+        sessions/env; treat that object as single-threaded.
     """
-    code: int = 0
-    reason: str | bytes | None = None
+
+    # Shared ctypes bindings (immutable after _ensure_libs). Loaded once.
+    _lib_lock = threading.Lock()
+    _libs_ready = False
+    libc: Any = None
+    calloc: Any = None
+    pam_end: Any = None
+    pam_start: Any = None
+    pam_acct_mgmt: Any = None
+    pam_set_item: Any = None
+    pam_setcred: Any = None
+    pam_strerror: Any = None
+    pam_authenticate: Any = None
+    pam_open_session: Any = None
+    pam_close_session: Any = None
+    pam_putenv: Any = None
+    pam_misc_setenv: Any = None
+    pam_getenv: Any = None
+    pam_getenvlist: Any = None
+
+    @classmethod
+    def _ensure_libs(cls) -> None:
+        """Load libpam/libc symbols once for all instances (thread-safe)."""
+        if cls._libs_ready:
+            return
+
+        with cls._lib_lock:
+            if cls._libs_ready:
+                return
+
+            # dlopen("", ...) — python already links libc, so symbols are available
+            libc = cdll.LoadLibrary(None)  # type: ignore[arg-type]
+            libpam = CDLL(find_library("pam"))
+            libpam_misc = CDLL(find_library("pam_misc"))
+
+            cls.libc = libc
+            cls.calloc = libc.calloc
+            cls.calloc.restype = c_void_p
+            cls.calloc.argtypes = [c_size_t, c_size_t]
+
+            # bug #6 (@NIPE-SYSTEMS), some libpam versions don't include this
+            if hasattr(libpam, 'pam_end'):  # pragma: no branch
+                cls.pam_end = libpam.pam_end
+                cls.pam_end.restype = c_int
+                cls.pam_end.argtypes = [PamHandle, c_int]
+
+            cls.pam_start = libpam.pam_start
+            cls.pam_start.restype = c_int
+            cls.pam_start.argtypes = [c_char_p, c_char_p, POINTER(PamConv),
+                                     POINTER(PamHandle)]
+
+            cls.pam_acct_mgmt = libpam.pam_acct_mgmt
+            cls.pam_acct_mgmt.restype = c_int
+            cls.pam_acct_mgmt.argtypes = [PamHandle, c_int]
+
+            cls.pam_set_item = libpam.pam_set_item
+            cls.pam_set_item.restype = c_int
+            cls.pam_set_item.argtypes = [PamHandle, c_int, c_void_p]
+
+            cls.pam_setcred = libpam.pam_setcred
+
+            cls.pam_strerror = libpam.pam_strerror
+            cls.pam_strerror.restype = c_char_p
+            cls.pam_strerror.argtypes = [PamHandle, c_int]
+
+            cls.pam_authenticate = libpam.pam_authenticate
+            cls.pam_authenticate.restype = c_int
+            cls.pam_authenticate.argtypes = [PamHandle, c_int]
+
+            cls.pam_open_session = libpam.pam_open_session
+            cls.pam_open_session.restype = c_int
+            cls.pam_open_session.argtypes = [PamHandle, c_int]
+
+            cls.pam_close_session = libpam.pam_close_session
+            cls.pam_close_session.restype = c_int
+            cls.pam_close_session.argtypes = [PamHandle, c_int]
+
+            cls.pam_putenv = libpam.pam_putenv
+            cls.pam_putenv.restype = c_int
+            cls.pam_putenv.argtypes = [PamHandle, c_char_p]
+
+            # CDLL._name is the loaded library path (empty if unavailable)
+            if getattr(libpam_misc, '_name', None):  # pragma: no branch
+                cls.pam_misc_setenv = libpam_misc.pam_misc_setenv
+                cls.pam_misc_setenv.restype = c_int
+                cls.pam_misc_setenv.argtypes = [PamHandle, c_char_p, c_char_p,
+                                               c_int]
+
+            cls.pam_getenv = libpam.pam_getenv
+            cls.pam_getenv.restype = c_char_p
+            cls.pam_getenv.argtypes = [PamHandle, c_char_p]
+
+            cls.pam_getenvlist = libpam.pam_getenvlist
+            cls.pam_getenvlist.restype = POINTER(c_char_p)
+            cls.pam_getenvlist.argtypes = [PamHandle]
+
+            cls._libs_ready = True
 
     def __init__(self):
-        # use a trick of dlopen(), this effectively becomes
-        # dlopen("", ...) which opens our own executable. since 'python' has
-        # a libc dependency, this means libc symbols are already available
-        # to us
-
-        # libc = CDLL(find_library("c"))
-        libc = cdll.LoadLibrary(None)  # type: ignore[arg-type]
-        self.libc = libc
-
-        libpam = CDLL(find_library("pam"))
-        libpam_misc = CDLL(find_library("pam_misc"))
+        self._ensure_libs()
+        # Cheap instance aliases to shared class bindings so callers/tests can
+        # patch per-object and static analyzers see callables on self.
+        cls = self.__class__
+        self.libc = cls.libc
+        self.calloc = cls.calloc
+        self.pam_end = cls.pam_end
+        self.pam_start = cls.pam_start
+        self.pam_acct_mgmt = cls.pam_acct_mgmt
+        self.pam_set_item = cls.pam_set_item
+        self.pam_setcred = cls.pam_setcred
+        self.pam_strerror = cls.pam_strerror
+        self.pam_authenticate = cls.pam_authenticate
+        self.pam_open_session = cls.pam_open_session
+        self.pam_close_session = cls.pam_close_session
+        self.pam_putenv = cls.pam_putenv
+        self.pam_misc_setenv = cls.pam_misc_setenv
+        self.pam_getenv = cls.pam_getenv
+        self.pam_getenvlist = cls.pam_getenvlist
 
         self.handle: PamHandle | None = None
         self.messages: list[str] = []
-
-        self.calloc = libc.calloc
-        self.calloc.restype = c_void_p
-        self.calloc.argtypes = [c_size_t, c_size_t]
-
-        # bug #6 (@NIPE-SYSTEMS), some libpam versions don't include this
-        # function
-        if hasattr(libpam, 'pam_end'):  # pragma: no branch
-            self.pam_end = libpam.pam_end
-            self.pam_end.restype = c_int
-            self.pam_end.argtypes = [PamHandle, c_int]
-
-        self.pam_start = libpam.pam_start
-        self.pam_start.restype = c_int
-        self.pam_start.argtypes = [c_char_p, c_char_p, POINTER(PamConv),
-                                   POINTER(PamHandle)]
-
-        self.pam_acct_mgmt = libpam.pam_acct_mgmt
-        self.pam_acct_mgmt.restype = c_int
-        self.pam_acct_mgmt.argtypes = [PamHandle, c_int]
-
-        self.pam_set_item = libpam.pam_set_item
-        self.pam_set_item.restype = c_int
-        self.pam_set_item.argtypes = [PamHandle, c_int, c_void_p]
-
-        self.pam_setcred = libpam.pam_setcred
-        self.pam_strerror = libpam.pam_strerror
-        self.pam_strerror.restype = c_char_p
-        self.pam_strerror.argtypes = [PamHandle, c_int]
-
-        self.pam_authenticate = libpam.pam_authenticate
-        self.pam_authenticate.restype = c_int
-        self.pam_authenticate.argtypes = [PamHandle, c_int]
-
-        self.pam_open_session = libpam.pam_open_session
-        self.pam_open_session.restype = c_int
-        self.pam_open_session.argtypes = [PamHandle, c_int]
-
-        self.pam_close_session = libpam.pam_close_session
-        self.pam_close_session.restype = c_int
-        self.pam_close_session.argtypes = [PamHandle, c_int]
-
-        self.pam_putenv = libpam.pam_putenv
-        self.pam_putenv.restype = c_int
-        self.pam_putenv.argtypes = [PamHandle, c_char_p]
-
-        if libpam_misc._name:  # pragma: no branch
-            self.pam_misc_setenv = libpam_misc.pam_misc_setenv
-            self.pam_misc_setenv.restype = c_int
-            self.pam_misc_setenv.argtypes = [PamHandle, c_char_p, c_char_p,
-                                             c_int]
-
-        self.pam_getenv = libpam.pam_getenv
-        self.pam_getenv.restype = c_char_p
-        self.pam_getenv.argtypes = [PamHandle, c_char_p]
-
-        self.pam_getenvlist = libpam.pam_getenvlist
-        self.pam_getenvlist.restype = POINTER(c_char_p)
-        self.pam_getenvlist.argtypes = [PamHandle]
+        self.code: int = 0
+        self.reason: str | bytes | None = None
 
     def authenticate(
         self,
@@ -301,7 +360,12 @@ class PamAuthenticator:
         Returns:
           success:  PAM_SUCCESS
           failure:  False
+
+        Note:
+          Do not call authenticate() on the same instance from multiple threads
+          concurrently. Use ``pam.authenticate()`` for concurrent high-QPS auth.
         """
+        self.messages = []
 
         @conv_func
         def __conv(n_messages, messages, p_response, app_data):
@@ -431,7 +495,7 @@ class PamAuthenticator:
         else:
             self.reason = f"PAM error {auth_success} (handle invalid)"
 
-        if call_end and hasattr(self, 'pam_end'):  # pragma: no branch
+        if call_end and hasattr(self, 'pam_end') and self.pam_end is not None:  # pragma: no branch
             self.pam_end(self.handle, auth_success)
             self.handle = None
 
@@ -446,7 +510,7 @@ class PamAuthenticator:
         Returns:
           Linux-PAM return value as int
         """
-        if not self.handle or not hasattr(self, 'pam_end'):
+        if not self.handle or self.pam_end is None:
             return PAM_SYSTEM_ERR
 
         retval = self.pam_end(self.handle, self.code)
@@ -498,7 +562,7 @@ class PamAuthenticator:
         Returns:
           Linux-PAM return value as int
         """
-        if not self.handle or not hasattr(self, "pam_misc_setenv"):
+        if not self.handle or self.pam_misc_setenv is None:
             return PAM_SYSTEM_ERR
 
         retval = self.pam_misc_setenv(self.handle,
