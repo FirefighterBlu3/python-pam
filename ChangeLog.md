@@ -11,6 +11,7 @@
     `PamAuthenticator` (thread-safe concurrent auth); libpam ctypes bindings
     are loaded once and shared for performance
   - document threading model (do not share one `PamAuthenticator` across threads)
+  - document when to use `resetcreds=True` vs `False` (#52)
 
 ## 2.0.2 Latest
 March 17, 2022

@@ -29,6 +29,28 @@ if pam.authenticate(username, password, service='myapp'):
     ...
 ```
 
+## Credentials (`resetcreds`)
+
+After a successful `pam_authenticate` + `pam_acct_mgmt`, `authenticate()` calls
+`pam_setcred(..., PAM_REINITIALIZE_CRED)` when `resetcreds=True` (the default).
+
+**Keep the default (`True`)** when this process is acting like a login / credential
+handoff: modules may establish or refresh credentials (e.g. Kerberos), and you care
+about that step succeeding as part of auth.
+
+**Set `resetcreds=False`** when you only need to verify a username/password (typical
+web/API “is this password valid?” checks). You are not assuming the user’s identity
+or opening a session; skipping setcred avoids extra module work and avoids treating a
+setcred failure as an authentication failure.
+
+```python
+# Password check only
+pam.authenticate(user, password, service='myapp', resetcreds=False)
+
+# Login-style / credential-aware stack (default)
+pam.authenticate(user, password, service='login')
+```
+
 ## Examples
 
 Commandline example:
