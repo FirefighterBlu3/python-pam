@@ -24,9 +24,7 @@ poetry run tox
 
 ## OpenSSF Best Practices
 
-This project aims to earn an
-[OpenSSF Best Practices](https://www.bestpractices.dev/) badge.
-Maintainers: create or update the project entry at
-[bestpractices.dev](https://www.bestpractices.dev/en/projects/new)
-(repo URL: `https://github.com/FirefighterBlu3/python-pam`), then add the
-badge markdown to `README.md` using the assigned project ID.
+This project tracks an
+[OpenSSF Best Practices](https://www.bestpractices.dev/projects/13794) badge
+([project 13794](https://www.bestpractices.dev/projects/13794)).
+Maintainers should keep the entry up to date as practices improve.
