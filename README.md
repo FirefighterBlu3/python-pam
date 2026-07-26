@@ -1,6 +1,6 @@
 # python-pam
 
-Python pam module supporting py3 (and py2) for Linux type systems (!windows)
+Python pam module supporting py3 for Linux type systems (!windows, !py2)
 
 Commandline example:
 
@@ -24,7 +24,7 @@ Python 3.9.7 (default, Oct 10 2021, 15:13:22)
 [GCC 11.1.0] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>> import pam
->>> p = pam.authenticate()
+>>> p = pam.pam()
 >>> p.authenticate('david', 'correctpassword')
 True
 >>> p.authenticate('david', 'badpassword')

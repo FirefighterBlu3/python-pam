@@ -1,9 +1,9 @@
-import sys as __sys
+"""PAM (Pluggable Authentication Modules) interface for Python.
 
-if __sys.version_info < (3, ):  # pragma: no cover
-    print('WARNING, Python 2 is EOL and therefore py2 support in this '
-          "package is deprecated. It won't be actively checked for"
-          'correctness')
+This module provides a Python interface to Linux-PAM, allowing authentication
+against system PAM services.
+"""
+import sys as __sys
 
 # list all the constants and export them
 from .__internals import PAM_ACCT_EXPIRED
@@ -57,6 +57,9 @@ from .__internals import PAM_USER_PROMPT
 from .__internals import PAM_USER_UNKNOWN
 from .__internals import PAM_XDISPLAY
 from .__internals import PamAuthenticator
+
+if __sys.version_info < (3, ):  # pragma: no cover
+    print('WARNING, Python 2 is EOL not supported')
 
 __all__ = [
     'authenticate',
@@ -113,18 +116,38 @@ __all__ = [
     'PAM_XDISPLAY',
     ]
 
-__PA = None
+__PA: PamAuthenticator | None = None
 
 
-def authenticate(username,
-                 password,
-                 service='login',
-                 env=None,
-                 call_end=True,
-                 encoding='utf-8',
-                 resetcreds=True,
-                 print_failure_messages=False):
-    global __PA
+def authenticate(
+    username: str | bytes,
+    password: str | bytes,
+    service: str | bytes = 'login',
+    env: dict[str, str] | None = None,
+    call_end: bool = True,
+    encoding: str = 'utf-8',
+    resetcreds: bool = True,
+    print_failure_messages: bool = False,
+) -> bool:
+    """Authenticate a user against PAM.
+
+    This is a convenience function that creates a PamAuthenticator instance
+    (reusing a global instance if available) and calls its authenticate method.
+
+    Args:
+        username: Username to authenticate
+        password: Password in plain text
+        service: PAM service to authenticate against (default: 'login')
+        env: Dictionary of environment variables to set
+        call_end: Whether to call pam_end() after authentication (default: True)
+        encoding: Encoding to use for string conversions (default: 'utf-8')
+        resetcreds: Whether to reset credentials after authentication (default: True)
+        print_failure_messages: Whether to print failure messages (default: False)
+
+    Returns:
+        bool: True if authentication succeeded, False otherwise
+    """
+    global __PA  # noqa: W0603, PLW0603
 
     if __PA is None:  # pragma: no branch
         __PA = PamAuthenticator()
@@ -133,5 +156,5 @@ def authenticate(username,
 
 
 # legacy implementations used pam.pam()
-pam = PamAuthenticator
+pam = PamAuthenticator  # noqa: N816, C0103
 authenticate.__doc__ = PamAuthenticator.authenticate.__doc__
