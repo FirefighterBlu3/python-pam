@@ -46,14 +46,14 @@ files = [
 
 [[package]]
 name = "astroid"
-version = "3.3.11"
+version = "4.0.4"
 description = "An abstract syntax tree for Python with inference support."
 optional = false
-python-versions = ">=3.9.0"
+python-versions = ">=3.10.0"
 groups = ["dev", "test"]
 files = [
-    {file = "astroid-3.3.11-py3-none-any.whl", hash = "sha256:54c760ae8322ece1abd213057c4b5bba7c49818853fc901ef09719a60dbf9dec"},
-    {file = "astroid-3.3.11.tar.gz", hash = "sha256:1e5a5011af2920c7c67a53f65d536d65bfa7116feeaf2354d8b94f29573bb0ce"},
+    {file = "astroid-4.0.4-py3-none-any.whl", hash = "sha256:52f39653876c7dec3e3afd4c2696920e05c83832b9737afc21928f2d2eb7a753"},
+    {file = "astroid-4.0.4.tar.gz", hash = "sha256:986fed8bcf79fb82c78b18a53352a0b287a73817d6dbcfba3162da36667c49a0"},
 ]
 
 [[package]]
@@ -627,24 +627,24 @@ windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
 name = "pylint"
-version = "3.3.9"
+version = "4.0.6"
 description = "python code static checker"
 optional = false
-python-versions = ">=3.9.0"
+python-versions = ">=3.10.0"
 groups = ["dev", "test"]
 files = [
-    {file = "pylint-3.3.9-py3-none-any.whl", hash = "sha256:01f9b0462c7730f94786c283f3e52a1fbdf0494bbe0971a78d7277ef46a751e7"},
-    {file = "pylint-3.3.9.tar.gz", hash = "sha256:d312737d7b25ccf6b01cc4ac629b5dcd14a0fcf3ec392735ac70f137a9d5f83a"},
+    {file = "pylint-4.0.6-py3-none-any.whl", hash = "sha256:d11a0e1fdb7b1cd46ec5d6fc78fee8b95f28695b2d6140e5809925f61e32ea54"},
+    {file = "pylint-4.0.6.tar.gz", hash = "sha256:52f19191bee08bf103f9705ad1a0ece4aa5a0a4ef2bdcbd969375a1e6f6579d5"},
 ]
 
 [package.dependencies]
-astroid = ">=3.3.8,<=3.4.0.dev0"
+astroid = ">=4.0.2,<=4.1.dev0"
 colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
 dill = [
     {version = ">=0.3.6", markers = "python_version == \"3.11\""},
     {version = ">=0.3.7", markers = "python_version >= \"3.12\""},
 ]
-isort = ">=4.2.5,<5.13 || >5.13,<7"
+isort = ">=5,<5.13 || >5.13,<9"
 mccabe = ">=0.6,<0.8"
 platformdirs = ">=2.2"
 tomlkit = ">=0.10.1"
@@ -955,4 +955,4 @@ python-discovery = ">=1.4.2"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "cd116f5a0ac9367b7427ceca71e297916076fe07dd08b80adc2ba29fb4677edd"
+content-hash = "b9d2a7f48cbc6af0992e5a05a1d632bbde516fd0feba4c3f6dc1f1945e4e7552"
