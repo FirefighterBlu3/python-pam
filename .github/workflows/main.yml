@@ -2,24 +2,24 @@ name: Python package
 
 on: [push]
 
+permissions: {}
+
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install tox tox-gh-actions
+        run: python -m pip install --require-hashes -r .github/requirements-ci.txt
       - name: Tox test
-        run: |
-          tox -vv
+        run: tox -vv

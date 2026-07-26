@@ -1,6 +1,12 @@
 # python-pam
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FirefighterBlu3/python-pam/badge)](https://scorecard.dev/viewer/?uri=github.com/FirefighterBlu3/python-pam)
+
 Python pam module supporting py3 for Linux type systems (!windows, !py2)
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for supported versions and how to report vulnerabilities.
 
 Commandline example:
 

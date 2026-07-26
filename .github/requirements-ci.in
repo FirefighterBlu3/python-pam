@@ -1,0 +1,10 @@
+# CI bootstrap pins for GitHub Actions (tox runner only).
+# Project/runtime deps stay in pyproject.toml / poetry.lock.
+#
+# Managed in CI by .github/workflows/update-ci-requirements.yml:
+# - tox== is synced from poetry.lock
+# - .github/requirements-ci.txt is regenerated with hashes and auto-committed
+#
+# You only need to edit tox-gh-actions here when you intentionally bump it.
+tox==4.58.0
+tox-gh-actions==3.5.0
