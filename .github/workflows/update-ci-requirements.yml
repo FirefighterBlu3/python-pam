@@ -27,7 +27,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install pip-tools
-        run: python -m pip install 'pip-tools==7.5.1'
+        run: python -m pip install 'pip==25.0.1' 'pip-tools==7.6.0'
 
       - name: Sync tox pin from poetry.lock and compile hashes
         run: |
@@ -54,6 +54,11 @@ jobs:
             --allow-unsafe \
             --output-file=.github/requirements-ci.txt \
             .github/requirements-ci.in
+
+          if [[ ! -s .github/requirements-ci.txt ]]; then
+            echo "requirements-ci.txt is empty after compile" >&2
+            exit 1
+          fi
 
       - name: Commit updates
         uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
