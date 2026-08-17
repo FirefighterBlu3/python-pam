@@ -18,7 +18,7 @@ packages = [{include = "pam", from = "python-pam"}]
 pytest = "^9.1.1"
 pytest-cov = "^7.1.0"
 pylint = "^4.0.6"
-tox = "^4.0.0"
+tox = "^4.60.0"
 bandit = "*"
 mypy = "*"
 
