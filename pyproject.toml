@@ -17,7 +17,7 @@ packages = [{include = "pam", from = "python-pam"}]
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.1.1"
 pytest-cov = "^7.1.0"
-pylint = "^4.0.6"
+pylint = "^4.0.7"
 tox = "^4.0.0"
 bandit = "*"
 mypy = "*"
