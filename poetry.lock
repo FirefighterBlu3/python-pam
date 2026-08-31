@@ -897,14 +897,14 @@ files = [
 
 [[package]]
 name = "tox"
-version = "4.58.0"
+version = "4.60.1"
 description = "tox is a generic virtualenv management and test command line tool"
 optional = false
 python-versions = ">=3.10"
 groups = ["dev", "test"]
 files = [
-    {file = "tox-4.58.0-py3-none-any.whl", hash = "sha256:dcae21f5f015f3a67658e35644cce0d1aa0dedcd06f3927f95d84e1717f6cea5"},
-    {file = "tox-4.58.0.tar.gz", hash = "sha256:ab0b126a04dd56bc18e6d216386db09335247f2289b54cf534deb5c4ae3a8d2e"},
+    {file = "tox-4.60.1-py3-none-any.whl", hash = "sha256:6f23a6417ad761b17c047e14b6e278968c09eb9b1fc00025269f82ec8327bc75"},
+    {file = "tox-4.60.1.tar.gz", hash = "sha256:2611b77ebe06fa571ae2f4176eaf644115d08891befb9c7cb705cb038d5ab38e"},
 ]
 
 [package.dependencies]
@@ -917,6 +917,7 @@ pluggy = ">=1.6"
 pyproject-api = ">=1.10"
 python-discovery = ">=1.4.4"
 tomli-w = ">=1.2"
+typing-extensions = {version = ">=4.15", markers = "python_version < \"3.13\""}
 virtualenv = ">=21.1"
 
 [package.extras]
@@ -929,11 +930,12 @@ version = "4.16.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
 optional = false
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["dev", "test"]
 files = [
     {file = "typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"},
     {file = "typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"},
 ]
+markers = {test = "python_version < \"3.13\""}
 
 [[package]]
 name = "virtualenv"
@@ -956,4 +958,4 @@ python-discovery = ">=1.4.2"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "1e0edea72db8a3041ad5f330e8c5a238ad7f708e9fc2bc623a38b156b39c529f"
+content-hash = "1552851b42cbdbec35cdbf2565e70494879ccf6cbd627465ac568b4f6880ce03"
