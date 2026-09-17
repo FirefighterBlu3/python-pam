@@ -12,6 +12,8 @@
     are loaded once and shared for performance
   - document threading model (do not share one `PamAuthenticator` across threads)
   - document when to use `resetcreds=True` vs `False` (#52)
+  - bump pip to 26.2.1 (CVE-2026-13346 / GHSA-qwm4-qh6w-59xr)
+  - refresh tox, pylint, mypy, pytest-env, and pip-tools pins
 
 ## 2.0.2 Latest
 March 17, 2022
