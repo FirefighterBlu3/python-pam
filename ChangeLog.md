@@ -1,6 +1,8 @@
 # ChangeLog
 
-## 2.1.0
+## 2.1.0 Latest
+September 16, 2026
+
   - switch to poetry
   - merge outstanding PRs
   - make handle checks and make them more robust
@@ -14,8 +16,9 @@
   - document when to use `resetcreds=True` vs `False` (#52)
   - bump pip to 26.2.1 (CVE-2026-13346 / GHSA-qwm4-qh6w-59xr)
   - refresh tox, pylint, mypy, pytest-env, and pip-tools pins
+  - add GitHub Actions trusted publishing for PyPI
 
-## 2.0.2 Latest
+## 2.0.2
 March 17, 2022
 
 ### Surface fixes
