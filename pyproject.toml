@@ -17,7 +17,7 @@ packages = [{include = "pam", from = "python-pam"}]
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.1.1"
 pytest-cov = "^7.1.0"
-pylint = "^4.0.8"
+pylint = "^4.1.1"
 tox = "^4.61.4"
 bandit = "*"
 mypy = ">=2.3.1,<3"
@@ -28,7 +28,7 @@ pytest-cov = "^7.1.0"
 pytest-env = "^1.7.1"
 tox = ">=4.61.4,<5"
 flake8 = "*"
-pylint = ">=4.0.8,<5"
+pylint = ">=4.1.1,<5"
 
 [tool.coverage.run]
 source = ["pam"]
