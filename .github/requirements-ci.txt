@@ -33,7 +33,6 @@ platformdirs==4.11.0 \
     --hash=sha256:0555d18370482847566ffabcaa53ad7c6c1c29f195989ae1ed634a05f76ea1e0 \
     --hash=sha256:360ccded2b7fce0af0ff80cc8f5942a1c5d99b0e856033acb030bfc634709e74
     # via
-    #   python-discovery
     #   tox
     #   virtualenv
 pluggy==1.6.0 \
@@ -44,9 +43,9 @@ pyproject-api==1.11.0 \
     --hash=sha256:860060c8832dce983b5eec6f41c4c43eb3ec06ff7332387a63acdf5ca27b68d8 \
     --hash=sha256:b8807d85a293e6c9f133e6575946fed45f1d42b22d58c780b33aa2421a799549
     # via tox
-python-discovery==1.5.0 \
-    --hash=sha256:3e014c6327154d3dda27939a9a0dc9c5c000439f1906d3f303b48f984bd2ecef \
-    --hash=sha256:70c4fc61b4e7404e44f01d6fc44a715c4d685ca6cea83d295922f05891877c98
+python-discovery==1.6.1 \
+    --hash=sha256:cf87d3627dfb4412437fdd5b13eae402607722998d21567993aedbc59b23c15e \
+    --hash=sha256:d43fcdef879fe795352bd13ccf8d185ba5a9f86f36cfcd00529f596e737442b3
     # via
     #   tox
     #   virtualenv
@@ -58,17 +57,17 @@ tox==4.61.4 \
     --hash=sha256:1ec27a26f485c408a3f128722959086099894955d1eb74ab973e233bd362e99e \
     --hash=sha256:d3fa82dc2fe847fe45b576ed0614e850a674aadec3a664f409e2bf295c473e20
     # via
-    #   -r .github/requirements-ci.in
+    #   -r requirements-ci.in
     #   tox-gh-actions
 tox-gh-actions==3.5.0 \
     --hash=sha256:070790114c92f4c94337047515ca5e077ceb269a5cb9366e0a0b3440a024eca1 \
     --hash=sha256:cc8e148c4513042e5019973e5672594c3df241b035e7fb550f6f778588110051
-    # via -r .github/requirements-ci.in
+    # via -r requirements-ci.in
 typing-extensions==4.16.0 \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8 \
     --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
     # via tox
-virtualenv==21.7.0 \
-    --hash=sha256:7f9519b9432ff11b6e1a3e94061664efc2ff99ea21780e3cf4f6bd0a5da8b37c \
-    --hash=sha256:a8370c1c5530fbabf955e40b8fbbc68a431648b10f9433faa587db30a06e51dd
+virtualenv==21.7.13 \
+    --hash=sha256:0355558b6f33619aab31347e43643b0ebc97f61ea3acf617b2b69e1f8a843d11 \
+    --hash=sha256:1bea5af7463f59c4719db48fe739579a2a4f569c96f26c086edda85c96da9f59
     # via tox
