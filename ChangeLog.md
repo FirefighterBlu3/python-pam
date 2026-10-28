@@ -1,6 +1,13 @@
 # ChangeLog
 
-## 2.1.0 Latest
+## 2.1.1 Latest
+October 27, 2026
+
+  - raise pylint to 4.1.3 (GHSA-22qq-2fwx-7p67)
+  - bump filelock to 4.2.4 and setuptools to 84.2.1 (no clean same-major)
+  - refresh pytest, tox, mypy, flake8, pytest-env, pip, and hashed CI pins
+
+## 2.1.0
 September 16, 2026
 
   - switch to poetry
