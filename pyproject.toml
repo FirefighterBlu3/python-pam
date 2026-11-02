@@ -20,7 +20,7 @@ pytest-cov = "^7.1.0"
 pylint = "^4.1.3"
 tox = "^4.67.2"
 bandit = "*"
-mypy = ">=2.4.0,<3"
+mypy = ">=2.4.1,<3"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.2.0"
